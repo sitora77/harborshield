@@ -2,7 +2,6 @@
 
 **A risk-aware decision-support prototype for maritime cargo insurance and intermodal logistics.**
 
-[![Tests](https://github.com/sitora77/harborshield/actions/workflows/tests.yml/badge.svg)](https://github.com/sitora77/harborshield/actions/workflows/tests.yml)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-1f6feb)](https://www.python.org/)
 [![Licence: MIT](https://img.shields.io/badge/Licence-MIT-2ea44f)](LICENSE)
 
