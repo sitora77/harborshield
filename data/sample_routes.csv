@@ -1,0 +1,4 @@
+route_id,name,via,freight_cost,duration_days,transshipments,distance_km,carbon_kg,weather_exposure,congestion_index,reliability,path
+direct_sg,Direct ocean service,Shanghai → Singapore,2600,12,0,3800,720,0.55,0.70,0.92,"31.2304:121.4737;1.2644:103.8200"
+busan_sg,Busan transshipment,Shanghai → Busan → Singapore,3400,17,1,5200,960,0.25,0.30,0.84,"31.2304:121.4737;35.1796:129.0756;1.2644:103.8200"
+klang_road,Port Klang + road,Shanghai → Port Klang → Singapore,3100,16,1,4650,1120,0.40,0.50,0.80,"31.2304:121.4737;3.0000:101.4000;1.2644:103.8200"
