@@ -13,7 +13,7 @@
   route/result alignment and conservative transit rounding.
 - Added input checks, all-zero-weight UI guidance and cached dashboard analysis.
 - Added model/dashboard tests, research-source mapping, pinned top-level
-  research requirements, CI definition and Chinese project explanation.
+  research requirements, inactive CI template and Chinese project explanation.
 - Explicitly documented per-container units, AI assistance and the distinction
   between same-model synthetic evaluation and real-world validation.
 

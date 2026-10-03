@@ -4,7 +4,6 @@
 
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-1f6feb)](https://www.python.org/)
 [![Licence: MIT](https://img.shields.io/badge/Licence-MIT-2ea44f)](LICENSE)
-[![Tests](https://github.com/sitora77/harborshield/actions/workflows/tests.yml/badge.svg)](https://github.com/sitora77/harborshield/actions/workflows/tests.yml)
 
 **v0.2:** joint batch CVaR, common disruption shocks, independent synthetic
 evaluation, four policy comparisons, confidence intervals and reproducible reports.
@@ -105,6 +104,10 @@ in `reports/`. The pinned file records tested top-level libraries, not a complet
 transitive lock. Test worlds are never used for policy selection. Baselines may
 coincide; superiority or real-world savings are not assumed. Cargo value and
 costs are per container, not per batch.
+
+Local model and dashboard tests pass. A [CI template](ci/tests.yml.example)
+is supplied, but GitHub Actions is **not yet enabled**: the current publishing
+credential does not grant workflow modification. See [activation notes](ci/README.md).
 
 ## Project structure
 
