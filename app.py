@@ -258,7 +258,7 @@ with research_tab:
     configuration = (shipment, scenario_name, batch_size, route_share, transit_limit,
                      joint_aversion, shock_strength, training_size)
     if st.button("Run joint-risk experiment", type="primary"):
-        with st.spinner("Comparing feasible allocations, four baselines, and five training seeds…"):
+        with st.spinner("Comparing feasible allocations, four policies, and five training seeds…"):
             study = run_joint_experiment(
                 shipment, ROUTES, scenario, containers=batch_size,
                 training_samples=training_size, evaluation_samples=10000,
