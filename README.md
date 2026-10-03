@@ -9,6 +9,12 @@
 evaluation, four policy comparisons, confidence intervals and reproducible reports.
 [Read the experiment evidence](docs/EXPERIMENT_REPORT.md).
 
+![Joint-risk research lab with held-out policy comparison](assets/research-lab.png)
+
+The screenshot shows synthetic default inputs. The public portfolio hosts a
+[static evidence page](https://sitorastudio.com/experiment.html); the interactive
+Streamlit application runs locally unless separately deployed on a Python host.
+
 HarborShield compares candidate cargo routes by combining shipment characteristics,
 marine risk, insurance coverage, delay uncertainty, logistics cost, and carbon
 emissions. It was designed as a transparent educational project at the intersection
