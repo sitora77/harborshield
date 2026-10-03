@@ -1,6 +1,7 @@
 """Streamlit interface for the HarborShield MVP."""
 
 from pathlib import Path
+import json
 from typing import Dict, List, Tuple
 
 import pandas as pd
@@ -22,11 +23,16 @@ from harborshield.models import (
     simulate_route,
 )
 from harborshield.optimization import optimize_container_portfolio
+from harborshield.joint_risk import run_joint_experiment
 from harborshield.public_data import activity_summary, load_port_activity
 
 
 ROOT = Path(__file__).resolve().parent
 ROUTES = load_routes(ROOT / "data" / "sample_routes.csv")
+simulate_route = st.cache_data(show_spinner=False)(simulate_route)
+scenario_stress_test = st.cache_data(show_spinner=False)(scenario_stress_test)
+risk_weight_sensitivity = st.cache_data(show_spinner=False)(risk_weight_sensitivity)
+run_joint_experiment = st.cache_data(show_spinner=False)(run_joint_experiment)
 
 
 def parse_path(path: str) -> List[Tuple[float, float]]:
@@ -91,6 +97,10 @@ shipment = Shipment(
     delay_cost_per_day=float(delay_cost),
 )
 scenario = SCENARIOS[scenario_name]
+
+if cost_weight + risk_weight + time_weight + carbon_weight == 0:
+    st.warning("Please give at least one decision priority a weight above zero.")
+    st.stop()
 
 results = [
     simulate_route(
@@ -226,9 +236,79 @@ st.download_button(
 
 st.divider()
 st.header("Advanced analysis")
-stress_tab, portfolio_tab, public_data_tab, model_tab = st.tabs(
-    ["Scenario stress test", "Container portfolio", "Public data", "Model card"]
+research_tab, stress_tab, portfolio_tab, public_data_tab, model_tab = st.tabs(
+    ["Joint-risk research lab", "Scenario stress test", "Allocation baseline", "Public data", "Model card"]
 )
+
+with research_tab:
+    st.subheader("Joint batch risk · independent synthetic evaluation")
+    st.caption(
+        "Select an allocation on training scenarios, then freeze it and evaluate on a separate seed. "
+        "All containers on a route share a sailing delay; common shocks can also affect several routes and cargo claims."
+    )
+    r1, r2, r3 = st.columns(3)
+    batch_size = r1.slider("Research batch size", 3, 100, 20)
+    route_share = r2.slider("Research route-share cap", 0.40, 1.0, 0.70, step=0.05)
+    transit_limit = r3.slider("Research mean-transit limit (days)", 14.0, 40.0, 22.0, step=0.5)
+    r4, r5, r6 = st.columns(3)
+    joint_aversion = r4.slider("Joint tail-risk weight", 0.0, 1.0, 0.5, step=0.1)
+    shock_strength = r5.slider("Shared latent-shock strength", 0.0, 1.0, 0.35, step=0.05,
+                               help="An assumed latent dependence parameter, not measured real-world correlation.")
+    training_size = r6.selectbox("Training scenarios", [500, 1000, 2500], index=1)
+    configuration = (shipment, scenario_name, batch_size, route_share, transit_limit,
+                     joint_aversion, shock_strength, training_size)
+    if st.button("Run joint-risk experiment", type="primary"):
+        with st.spinner("Comparing feasible allocations, four baselines, and five training seeds…"):
+            study = run_joint_experiment(
+                shipment, ROUTES, scenario, containers=batch_size,
+                training_samples=training_size, evaluation_samples=10000,
+                shared_shock_strength=shock_strength, maximum_route_share=route_share,
+                maximum_average_transit_days=transit_limit, risk_aversion=joint_aversion,
+            )
+            st.session_state["joint_study"] = study
+            st.session_state["joint_configuration"] = configuration
+    if st.session_state.get("joint_configuration") != configuration:
+        st.info("Run the experiment for the current inputs. Held-out evaluation uses 10,000 separate synthetic scenarios.")
+    else:
+        study = st.session_state["joint_study"]
+        if study["status"] == "infeasible":
+            st.warning("No feasible allocation. Relax the share cap or mean-transit limit; container counts are never rounded up past the cap.")
+        else:
+            primary = study["comparison"][0]
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Test-set batch mean", money(primary["mean_cost"]))
+            m2.metric("Test-set batch CVaR95", money(primary["cvar95_cost"]))
+            m3.metric("Feasible integer allocations", study["feasible_allocations"])
+            comparison = pd.DataFrame(study["comparison"])
+            display = comparison[["policy", "counts", "mean_cost", "cvar95_cost", "average_transit_days"]].copy()
+            display.columns = ["Policy", "Allocation (route order below)", "Test mean (USD)", "Test CVaR95 (USD)", "Mean transit (days)"]
+            for column in ("Test mean (USD)", "Test CVaR95 (USD)"):
+                display[column] = display[column].map(money)
+            display["Mean transit (days)"] = display["Mean transit (days)"].round(2)
+            st.caption("Route order: " + " / ".join(study["route_ids"]))
+            st.dataframe(display, width="stretch", hide_index=True)
+            frontier = pd.DataFrame(study["frontier"])
+            chart = px.scatter(frontier, x="mean_cost", y="cvar95_cost", color="pareto_efficient",
+                               hover_data=["counts", "average_transit_days"],
+                               title="Training-set cost–tail-risk frontier (not test-set performance)",
+                               labels={"mean_cost": "Batch mean cost (USD)", "cvar95_cost": "Batch CVaR95 (USD)", "pareto_efficient": "Non-dominated"})
+            st.plotly_chart(chart)
+            paired = study["paired_uncertainty"]
+            low, high = paired["cvar95_difference_ci95"]
+            difference_text = (f"Joint minus cost-only test CVaR95: {money(paired['cvar95_difference'])}; "
+                               f"paired bootstrap 95% interval [{money(low)}, {money(high)}]. Negative favours joint-risk allocation.")
+            st.markdown(difference_text.replace("$", "\\$"))
+            st.warning("An interval spanning zero does not establish a tail-cost improvement. These intervals cover simulation noise only, not uncertainty in uncalibrated model parameters.")
+            with st.expander("Training-seed stability and reproducibility"):
+                st.dataframe(pd.DataFrame(study["training_seed_stability"]), hide_index=True)
+                st.write(f"Training seed {study['train_seed']}; independent evaluation seed {study['test_seed']}. "
+                         "Five training seeds can produce different allocations; no baseline is guaranteed to win on the test set.")
+            st.download_button("Download complete experiment (JSON)", json.dumps(study, indent=2),
+                               "harborshield_joint_experiment.json", "application/json")
+            st.download_button("Download held-out comparison (CSV)", comparison.to_csv(index=False),
+                               "harborshield_joint_comparison.csv", "text/csv")
+    st.markdown("Method: [Rockafellar & Uryasev, CVaR optimisation](https://doi.org/10.21314/JOR.2000.038). "
+                "The three-route action space is exhaustively evaluated, giving the global optimum of the **sampled** objective—not a real-world optimum.")
 
 with stress_tab:
     st.subheader("Cross-scenario robustness")
@@ -348,11 +428,12 @@ with stress_tab:
     st.dataframe(recommended_by_weight, width="stretch", hide_index=True)
 
 with portfolio_tab:
-    st.subheader("Risk-aware container allocation")
+    st.subheader("Additive-tail allocation baseline")
     st.caption(
         "OR-Tools solves an integer programme that allocates a batch across routes "
         "while limiting concentration and average transit time."
     )
+    st.warning("This baseline adds standalone route-tail penalties. It is NOT joint batch CVaR and does not model cross-route dependence. Use the research lab for joint risk.")
     portfolio_col1, portfolio_col2, portfolio_col3 = st.columns(3)
     containers = portfolio_col1.slider(
         "Containers", 3, 100, 20, key="portfolio_containers"
@@ -478,9 +559,13 @@ with model_tab:
         **Real public input:** monthly Singapore vessel arrivals from MPA/data.gov.sg.  
         **Simulated inputs:** route price, duration, reliability, exposure, and carbon values.  
         **Methods:** logistic risk scoring, Monte Carlo uncertainty propagation,
-        weighted multi-criteria ranking, stress testing, and integer optimisation.
+        weighted multi-criteria ranking, stress testing, joint batch CVaR,
+        independent synthetic evaluation, and an OR-Tools allocation baseline.
 
         Selected research references:
+
+        - [Rockafellar & Uryasev: Optimization of Conditional Value-at-Risk](https://doi.org/10.21314/JOR.2000.038)
+        - [Mean-CVaR estimation risk](https://arxiv.org/abs/1111.2091v2)
 
         - [Maritime Port Supply Chain Resilience: A Systematic Review](https://arxiv.org/abs/2510.09844v1)
         - [Temporal-IRL: Modeling Port Congestion and Berth Scheduling](https://arxiv.org/abs/2506.19843v1)

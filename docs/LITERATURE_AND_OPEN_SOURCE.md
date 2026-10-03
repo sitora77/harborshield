@@ -1,7 +1,25 @@
 # Literature, open-source, and data traceability
 
 This document records what informed HarborShield and, equally importantly,
-what was **not** copied or claimed. Sources were reviewed on 26 September 2026.
+what was **not** copied or claimed. Initial sources were reviewed on 26 September
+2026; the v0.2 additions were checked on 4 October 2026 with the free arXiv API,
+author-hosted papers, GitHub and official documentation. No Firecrawl was used
+for the v0.2 additions.
+
+## v0.2 sources mapped to implementation
+
+| Primary source | Implemented use | Boundary |
+|---|---|---|
+| Rockafellar & Uryasev (2000), *Optimization of Conditional Value-at-Risk*, [DOI](https://doi.org/10.21314/JOR.2000.038), [author-hosted preprint](https://sites.math.washington.edu/~rtr/papers/rtr179-CVaR1.pdf) | Variational CVaR and scenario-based loss optimisation. | Finite whole-container enumeration, not the financial application or a copied solver. |
+| Rockafellar & Uryasev (2002), *Conditional Value-at-Risk for General Loss Distributions*, [preprint](https://sites.math.washington.edu/~rtr/papers/rtr187-CVaR2.pdf) | Fractional tail mass and tied-loss handling; independent CVaR identity tests. | Does not equate all values above an interpolated P95 with the worst 5% mass. |
+| El Karoui, Lim & Vahn, *Performance-based regularization in mean-CVaR portfolio optimization*, [arXiv:1111.2091v2](https://arxiv.org/abs/1111.2091v2) | Motivates reporting estimation risk, seed instability and separate evaluation. | PBR regularisation and asymptotic results are not implemented or claimed. |
+| [PyPortfolio/PyPortfolioOpt](https://github.com/PyPortfolio/PyPortfolioOpt), MIT; [official CVaR documentation](https://pyportfolioopt.readthedocs.io/en/latest/GeneralEfficientFrontier.html#efficient-cvar) | Scenario-based CVaR implementation comparison. | Not a dependency; no code copied. Shipping costs and integer containers differ from fractional financial returns. |
+| [ccolon/disrupt-sc](https://github.com/ccolon/disrupt-sc), GPL-3.0 | System-level supply-chain disruption and transport-dependency reference. | Conceptual only; no GPL code copied into this MIT repository; no agent-based economy implemented. |
+
+The Gaussian shared shocks, premium correction and finite-action enumeration
+are explicit prototype modelling/engineering choices, not fitted parameters
+from these papers. The maritime resilience review was rechecked via arXiv
+metadata; it motivates regime coverage, not claim pricing.
 
 ## Research literature
 

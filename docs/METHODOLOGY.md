@@ -1,5 +1,8 @@
 # HarborShield methodology
 
+Version 0.2: see [joint-risk methodology](JOINT_RISK_METHODOLOGY.md) for batch
+dependence, exact empirical CVaR, allocation, held-out evaluation and units.
+
 ## 1. Decision problem
 
 For a cargo shipment or container batch, compare routes that differ in freight
@@ -46,8 +49,11 @@ payout = coverage ratio × max(gross loss - deductible, 0)
 retained loss = gross loss - payout
 ```
 
-The illustrative premium combines probability, assumed average severity,
-coverage, and a loading factor. It must not be treated as an insurance quote.
+The severity distribution is Triangular(0.03, mode, 0.88), where mode is
+0.26 + 0.10 × cargo sensitivity. Its mean is (minimum + mode + maximum)/3,
+not the mode. The illustrative premium is 1.25 × expected insured payout,
+including the deductible via the exact triangular stop-loss expectation.
+It must not be treated as an insurance quote.
 
 ## 5. Multi-criteria route ranking
 
@@ -72,7 +78,11 @@ Every route is re-simulated under four scenarios. The robustness table reports:
 This prevents a single baseline recommendation from being presented as
 universally optimal.
 
-## 7. Container portfolio optimisation
+## 7. Additive-tail container allocation baseline
+
+This original OR-Tools model sums standalone marginal risk penalties. It is
+**not joint batch CVaR** and does not represent cross-route dependence. The
+new research lab uses joint sampled losses and exact finite-action enumeration.
 
 The OR-Tools CP-SAT model chooses integer container allocations `x_r`:
 
@@ -80,7 +90,7 @@ The OR-Tools CP-SAT model chooses integer container allocations `x_r`:
 minimise Σ x_r × [expected cost_r + λ(CVaR95 cost_r - expected cost_r)]
 subject to:
   Σ x_r = total containers
-  x_r ≤ maximum route share × total containers
+  x_r ≤ floor(maximum route share × total containers)
   weighted average transit time ≤ selected limit
   x_r is a non-negative integer
 ```
@@ -100,7 +110,9 @@ the loss model.
 
 Implemented validation includes unit tests, deterministic random seeds,
 monotonic adverse-scenario checks, feasibility checks for the integer model,
-and an automated Streamlit render test.
+and automated Streamlit interaction tests. Version 0.2 adds CVaR identity tests,
+independent synthetic evaluation, paired bootstrap intervals, training-seed
+stability and dependence/sample-size diagnostics. These are not empirical validation.
 
 Not yet completed:
 

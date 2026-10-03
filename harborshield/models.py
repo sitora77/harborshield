@@ -34,16 +34,18 @@ class Shipment:
     delay_cost_per_day: float = 500.0
 
     def __post_init__(self) -> None:
-        if self.cargo_value <= 0:
+        if not math.isfinite(self.cargo_value) or self.cargo_value <= 0:
             raise ValueError("cargo_value must be positive")
         if self.cargo_type not in CARGO_RISK:
             raise ValueError("unsupported cargo_type")
-        if not 1 <= self.packaging_quality <= 5:
+        if not isinstance(self.packaging_quality, int) or not 1 <= self.packaging_quality <= 5:
             raise ValueError("packaging_quality must be between 1 and 5")
         if not 0 <= self.coverage_ratio <= 1:
             raise ValueError("coverage_ratio must be between 0 and 1")
         if not 0 <= self.deductible_ratio <= 1:
             raise ValueError("deductible_ratio must be between 0 and 1")
+        if not math.isfinite(self.delay_cost_per_day) or self.delay_cost_per_day < 0:
+            raise ValueError("delay_cost_per_day must be finite and non-negative")
 
 
 @dataclass(frozen=True)
@@ -61,6 +63,21 @@ class Route:
     reliability: float
     path: str
 
+    def __post_init__(self) -> None:
+        if not self.route_id or not self.name:
+            raise ValueError("route_id and name are required")
+        for field in ("freight_cost", "duration_days", "distance_km", "carbon_kg"):
+            value = getattr(self, field)
+            if not math.isfinite(value) or value < 0:
+                raise ValueError(f"{field} must be finite and non-negative")
+        if self.duration_days == 0:
+            raise ValueError("duration_days must be positive")
+        for field in ("weather_exposure", "congestion_index", "reliability"):
+            if not 0 <= getattr(self, field) <= 1:
+                raise ValueError(f"{field} must be in [0, 1]")
+        if not isinstance(self.transshipments, int) or self.transshipments < 0:
+            raise ValueError("transshipments must be a non-negative integer")
+
 
 @dataclass(frozen=True)
 class Scenario:
@@ -69,6 +86,12 @@ class Scenario:
     congestion_multiplier: float = 1.0
     delay_multiplier: float = 1.0
     disruption_multiplier: float = 1.0
+
+    def __post_init__(self) -> None:
+        for field in ("weather_multiplier", "congestion_multiplier", "delay_multiplier", "disruption_multiplier"):
+            value = getattr(self, field)
+            if not math.isfinite(value) or value <= 0:
+                raise ValueError(f"{field} must be finite and positive")
 
 
 SCENARIOS: Dict[str, Scenario] = {
@@ -159,9 +182,61 @@ def _percentile(values: List[float], percentile: float) -> float:
 
 
 def _conditional_tail_mean(values: List[float], percentile: float) -> float:
-    threshold = _percentile(values, percentile)
-    tail = [value for value in values if value >= threshold]
-    return sum(tail) / len(tail) if tail else threshold
+    """Empirical upper CVaR with fractional boundary mass, including ties.
+
+    Equivalent to min_eta eta + mean(max(loss - eta, 0)) / (1 - alpha).
+    Simply averaging values >= an interpolated quantile is not equivalent.
+    """
+    if not values or not 0 <= percentile < 1:
+        raise ValueError("CVaR requires nonempty samples and percentile in [0, 1)")
+    if any(not math.isfinite(value) for value in values):
+        raise ValueError("loss samples must be finite")
+    ordered = sorted(values, reverse=True)
+    mass = len(ordered) * (1 - percentile)
+    whole = min(int(math.floor(mass)), len(ordered))
+    fraction = mass - whole
+    total = sum(ordered[:whole])
+    if whole < len(ordered):
+        total += fraction * ordered[whole]
+    return total / mass
+
+
+def severity_parameters(shipment: Shipment):
+    """Triangular loss fraction: (minimum, mode, maximum), not mean."""
+    return 0.03, 0.26 + 0.10 * CARGO_RISK[shipment.cargo_type], 0.88
+
+
+def expected_excess_severity(shipment: Shipment) -> float:
+    """Exact E[(severity - deductible_ratio)+] for the triangular model."""
+    low, mode, high = severity_parameters(shipment)
+    deductible = shipment.deductible_ratio
+    mean = (low + mode + high) / 3
+    if deductible <= low:
+        return mean - deductible
+    if deductible >= high:
+        return 0.0
+    if deductible <= mode:
+        return mean - deductible + (deductible - low) ** 3 / (3 * (high - low) * (mode - low))
+    return (high - deductible) ** 3 / (3 * (high - low) * (high - mode))
+
+
+def insurance_premium(shipment: Shipment, route: Route, scenario: Scenario) -> float:
+    """Illustrative expected insured payout plus 25% loading; not a quote."""
+    return (claim_probability(shipment, route, scenario) * shipment.cargo_value
+            * shipment.coverage_ratio * expected_excess_severity(shipment) * 1.25)
+
+
+def delay_parameters(route: Route, scenario: Scenario):
+    location = (route.duration_days * max(scenario.delay_multiplier - 1, 0)
+                + 2.2 * route.congestion_index * scenario.congestion_multiplier)
+    return location, max(0.7, location * 0.40)
+
+
+def expected_delay_days(route: Route, scenario: Scenario) -> float:
+    """Analytic mean of max(0, Normal(location, scale)); used in constraints."""
+    location, scale = delay_parameters(route, scenario)
+    z = location / scale
+    return location * (1 + math.erf(z / math.sqrt(2))) / 2 + scale * math.exp(-z * z / 2) / math.sqrt(2 * math.pi)
 
 
 def simulate_route(
@@ -173,8 +248,10 @@ def simulate_route(
     carbon_price_per_tonne: float = 80.0,
 ) -> SimulationResult:
     """Run a reproducible Monte Carlo simulation for one route."""
-    if iterations < 100:
+    if not isinstance(iterations, int) or iterations < 100:
         raise ValueError("iterations must be at least 100")
+    if not math.isfinite(carbon_price_per_tonne) or carbon_price_per_tonne < 0:
+        raise ValueError("carbon price must be finite and non-negative")
 
     rng = random.Random(seed)
     probability = claim_probability(shipment, route, scenario)
@@ -182,14 +259,8 @@ def simulate_route(
 
     # Pure-risk premium plus a 25% operating/capital loading. This is a
     # teaching approximation, not an insurer quote.
-    assumed_mean_severity = 0.26 + 0.10 * CARGO_RISK[shipment.cargo_type]
-    insurance_premium = (
-        shipment.cargo_value
-        * probability
-        * assumed_mean_severity
-        * shipment.coverage_ratio
-        * 1.25
-    )
+    low_severity, mode_severity, high_severity = severity_parameters(shipment)
+    premium = insurance_premium(shipment, route, scenario)
     carbon_cost = route.carbon_kg / 1_000.0 * carbon_price_per_tonne
 
     gross_losses: List[float] = []
@@ -199,26 +270,22 @@ def simulate_route(
     delay_costs: List[float] = []
     total_costs: List[float] = []
 
-    disruption_delay = route.duration_days * max(scenario.delay_multiplier - 1, 0)
-    congestion_delay = (
-        2.2 * route.congestion_index * scenario.congestion_multiplier
-    )
-    mean_delay = disruption_delay + congestion_delay
+    mean_delay, delay_scale = delay_parameters(route, scenario)
 
     for _ in range(iterations):
         if rng.random() < probability:
-            severity = rng.triangular(0.03, 0.88, assumed_mean_severity)
+            severity = rng.triangular(low_severity, high_severity, mode_severity)
             gross_loss = shipment.cargo_value * severity
         else:
             gross_loss = 0.0
 
         payout = shipment.coverage_ratio * max(gross_loss - deductible, 0.0)
         retained_loss = gross_loss - payout
-        delay = max(0.0, rng.gauss(mean_delay, max(0.7, mean_delay * 0.40)))
+        delay = max(0.0, rng.gauss(mean_delay, delay_scale))
         delay_cost = delay * shipment.delay_cost_per_day
         total_cost = (
             route.freight_cost
-            + insurance_premium
+            + premium
             + retained_loss
             + delay_cost
             + carbon_cost
@@ -236,7 +303,7 @@ def simulate_route(
         route_id=route.route_id,
         route_name=route.name,
         claim_probability=probability,
-        insurance_premium=insurance_premium,
+        insurance_premium=premium,
         expected_gross_loss=sum(gross_losses) / divisor,
         expected_insurance_payout=sum(payouts) / divisor,
         expected_retained_loss=sum(retained_losses) / divisor,
@@ -273,7 +340,7 @@ def rank_routes(
     if not results:
         return []
     weights = [cost_weight, risk_weight, time_weight, carbon_weight]
-    if any(weight < 0 for weight in weights) or math.isclose(sum(weights), 0):
+    if any(not math.isfinite(weight) or weight < 0 for weight in weights) or math.isclose(sum(weights), 0):
         raise ValueError("weights must be non-negative and sum to more than zero")
     total_weight = sum(weights)
     cost_weight, risk_weight, time_weight, carbon_weight = [

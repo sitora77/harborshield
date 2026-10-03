@@ -31,18 +31,25 @@ def optimize_container_portfolio(
 ) -> Optional[PortfolioSolution]:
     """Allocate a container batch using an auditable integer programme.
 
-    The objective minimises expected total cost plus a configurable tail-risk
-    premium based on the gap between CVaR95 and expected cost. Constraints enforce
+    This baseline uses ADDITIVE standalone-route risk proxies, not joint batch
+    CVaR. See joint_risk.py for a dependence-aware sample-average optimiser.
+    The objective adds a premium based on each route's CVaR-to-mean gap. Constraints enforce
     a shipment total, a route-concentration limit, and an average transit limit.
     """
-    if containers < 1:
+    if not isinstance(containers, int) or containers < 1:
         raise ValueError("containers must be positive")
     if len(routes) != len(results):
         raise ValueError("routes and results must have the same length")
+    if not routes or len({route.route_id for route in routes}) != len(routes):
+        raise ValueError("routes must be nonempty and have unique IDs")
+    if any(route.route_id != result.route_id for route, result in zip(routes, results)):
+        raise ValueError("results must match route IDs in order")
     if not 0 < maximum_route_share <= 1:
         raise ValueError("maximum_route_share must be in (0, 1]")
-    if risk_aversion < 0:
+    if not math.isfinite(risk_aversion) or risk_aversion < 0:
         raise ValueError("risk_aversion must be non-negative")
+    if not math.isfinite(maximum_average_transit_days) or maximum_average_transit_days <= 0:
+        raise ValueError("maximum_average_transit_days must be finite and positive")
 
     model = cp_model.CpModel()
     variables = [
@@ -51,18 +58,18 @@ def optimize_container_portfolio(
     ]
     model.add(sum(variables) == containers)
 
-    route_cap = max(1, math.floor(containers * maximum_route_share))
+    route_cap = math.floor(containers * maximum_route_share + 1e-9)
     for variable in variables:
         model.add(variable <= route_cap)
 
     duration_scale = 100
     model.add(
         sum(
-            int(round((result.duration_days + result.expected_delay_days) * duration_scale))
+            int(math.ceil((result.duration_days + result.expected_delay_days) * duration_scale))
             * variable
             for result, variable in zip(results, variables)
         )
-        <= int(round(maximum_average_transit_days * duration_scale * containers))
+        <= int(math.floor(maximum_average_transit_days * duration_scale * containers))
     )
 
     cost_scale = 100
