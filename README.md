@@ -11,6 +11,11 @@ working-capital cash ledger, structured trade-document checks and standalone Ed2
 [Read the case and assumptions](docs/CASE_STUDY.md) ·
 [单证实验指南](docs/TRADE_DOCUMENT_GUIDE_ZH.md).
 
+![Live browser case with constructed inputs and computed economic burden](assets/business-case.png)
+
+The case screenshot shows constructed default order assumptions on the live
+website, not a real customer transaction or bank financing offer.
+
 **v0.2 research layer:** joint batch CVaR, common disruption shocks, independent synthetic
 evaluation, four policy comparisons, confidence intervals and reproducible reports.
 [Read the experiment evidence](docs/EXPERIMENT_REPORT.md).
@@ -46,6 +51,11 @@ flowchart LR
     H --> K
     L --> K
     J --> K
+    M[Public-event register] -. Context, not calibration .-> N[Constructed order case]
+    N --> O[Replenishment + working-capital ledger]
+    O --> K
+    P[Constructed structured documents] --> Q[Consistency + signature checks]
+    Q --> K
 ```
 
 ## Why this project exists
