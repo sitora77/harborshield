@@ -4,3 +4,4 @@ pandas==2.3.3
 plotly==6.9.0
 streamlit==1.50.0
 ortools==9.15.6755
+cryptography==46.0.7

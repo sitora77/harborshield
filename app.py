@@ -25,6 +25,7 @@ from harborshield.models import (
 from harborshield.optimization import optimize_container_portfolio
 from harborshield.joint_risk import run_joint_experiment
 from harborshield.public_data import activity_summary, load_port_activity
+from harborshield.case_ui import render_business_case, render_document_lab
 
 
 ROOT = Path(__file__).resolve().parent
@@ -236,9 +237,15 @@ st.download_button(
 
 st.divider()
 st.header("Advanced analysis")
-research_tab, stress_tab, portfolio_tab, public_data_tab, model_tab = st.tabs(
-    ["Joint-risk research lab", "Scenario stress test", "Allocation baseline", "Public data", "Model card"]
+case_tab, document_tab, research_tab, stress_tab, portfolio_tab, public_data_tab, model_tab = st.tabs(
+    ["Real-event business case", "Trade-document lab", "Joint-risk research lab", "Scenario stress test", "Allocation baseline", "Public data", "Model card"]
 )
+
+with case_tab:
+    render_business_case(ROOT)
+
+with document_tab:
+    render_document_lab(ROOT)
 
 with research_tab:
     st.subheader("Joint batch risk · independent synthetic evaluation")

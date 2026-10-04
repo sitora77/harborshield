@@ -6,6 +6,25 @@ what was **not** copied or claimed. Initial sources were reviewed on 26 Septembe
 author-hosted papers, GitHub and official documentation. No Firecrawl was used
 for the v0.2 additions.
 
+## v0.3 public cases and document implementation
+
+Checked on 4 October 2026 using official websites, GitHub and SDK documentation.
+No Firecrawl or paid data source was used.
+
+| Primary source | Implemented use | Boundary |
+|---|---|---|
+| [MPA, extended berth waiting, 30 May 2024](https://www.mpa.gov.sg/media-centre/details/in-response-to-media-queries-on--vessels--extended-waiting-times-for-berths-in-the-port-of-singapore) | Historical facts in `data/cases/singapore_2024.json`; conditional 2.5-day affected-order scenario. | Most container ships berthed on arrival. Does not calibrate shipment delay distributions, quotes or insurance rates. |
+| [TradeTrust Singapore–India transaction, 25 August 2023](https://www.tradetrust.io/happenings-and-resources/press-release-singapore-india-kick-off-interoperable-ebills-of-lading-for-trade-finance/) | Motivates structured document checks and content-integrity/issuer-key separation. | Physical shipment was Miami–Gujarat. No access to its confidential documents or bank systems. |
+| [TrustVC/trustvc](https://github.com/TrustVC/trustvc), Apache-2.0 | Architecture reference for credentials, verification and issuer trust. | No code copied or dependency/integration. HarborShield's teaching envelope is not a TradeTrust/W3C credential and does not transfer eBL title. |
+| [cryptography 46.0.7 Ed25519 documentation](https://cryptography.io/en/46.0.7/hazmat/primitives/asymmetric/ed25519/) | Direct SDK dependency: generate/sign/verify plus raw public-key encoding. | Cryptographic primitives are not implemented by HarborShield. Sorted JSON is project-local, not an interoperability standard. |
+
+Order economics are explicit deterministic engineering assumptions rather than
+a fitted financial/credit model. Finance cost integrates negative cash balance
+over time with simple ACT/365 interest. No asset pricing, PD/LGD estimation,
+blockchain transaction or institution-verified issuer identity is implemented.
+The v0.2 papers below still underpin the independent stochastic risk layer;
+they are not used to justify actual financing performance in the v0.3 case.
+
 ## v0.2 sources mapped to implementation
 
 | Primary source | Implemented use | Boundary |

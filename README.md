@@ -5,15 +5,23 @@
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-1f6feb)](https://www.python.org/)
 [![Licence: MIT](https://img.shields.io/badge/Licence-MIT-2ea44f)](LICENSE)
 
-**v0.2:** joint batch CVaR, common disruption shocks, independent synthetic
+**v0.3:** a Singapore 2024 public-event case, constructed replenishment economics,
+working-capital cash ledger, structured trade-document checks and standalone Ed25519 signatures.
+[Try the online case calculator](https://sitorastudio.com/case-study.html) ·
+[Read the case and assumptions](docs/CASE_STUDY.md) ·
+[单证实验指南](docs/TRADE_DOCUMENT_GUIDE_ZH.md).
+
+**v0.2 research layer:** joint batch CVaR, common disruption shocks, independent synthetic
 evaluation, four policy comparisons, confidence intervals and reproducible reports.
 [Read the experiment evidence](docs/EXPERIMENT_REPORT.md).
 
 ![Joint-risk research lab with held-out policy comparison](assets/research-lab.png)
 
-The screenshot shows synthetic default inputs. The public portfolio hosts a
-[static evidence page](https://sitorastudio.com/experiment.html); the interactive
-Streamlit application runs locally unless separately deployed on a Python host.
+The screenshot shows synthetic research inputs. The public portfolio hosts a
+[static research evidence page](https://sitorastudio.com/experiment.html) and a
+[browser-based order-economics calculator](https://sitorastudio.com/case-study.html).
+The full Streamlit dashboard, document uploads and signing lab run locally unless
+separately deployed on a Python host. The case page's document results are static snapshots.
 
 HarborShield compares candidate cargo routes by combining shipment characteristics,
 marine risk, insurance coverage, delay uncertainty, logistics cost, and carbon
@@ -49,6 +57,11 @@ scenario analysis instead of presenting a black-box recommendation.
 
 ## Current research prototype
 
+- Public Singapore 2024 event register, separately labelled constructed order/options.
+- Replenishment, stockout opportunity cost and exact event-based working-capital ledger.
+- Interactive browser/Python calculations cross-checked across 27 sensitivity settings.
+- Invoice, packing-list and insurance-application consistency checks on structured JSON.
+- Ed25519 content-integrity demo with a separately supplied public-key anchor.
 - Four disruption scenarios: normal operations, monsoon weather, port congestion,
   and strait disruption.
 - Interpretable cargo-claim probability model.
@@ -103,6 +116,9 @@ python -m unittest discover -s tests -v
 ```bash
 python -m pip install -r requirements-research.txt
 python scripts/run_experiments.py
+python scripts/run_case_study.py
+# Optional browser/Python agreement checks require Node.js 20+:
+node scripts/test_case_calculator.cjs
 ```
 
 This creates unrounded JSON, comparison CSV, Markdown and static HTML evidence
@@ -110,6 +126,12 @@ in `reports/`. The pinned file records tested top-level libraries, not a complet
 transitive lock. Test worlds are never used for policy selection. Baselines may
 coincide; superiority or real-world savings are not assumed. Cargo value and
 costs are per container, not per batch.
+
+The v0.3 deterministic case is separate from the claims simulation. Public facts
+do not calibrate delay distributions or insurance/credit risk. All order prices,
+service times, rates and document fixtures are constructed, not anonymised company
+data. No real-world savings, bank integration, credit scoring, TradeTrust
+interoperability or legally effective eBL/title transfer is claimed.
 
 Local model and dashboard tests pass. A [CI template](ci/tests.yml.example)
 is supplied, but GitHub Actions is **not yet enabled**: the current publishing

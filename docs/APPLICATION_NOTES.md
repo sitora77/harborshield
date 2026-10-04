@@ -29,6 +29,23 @@ assumptions, sensitivity analysis, and multi-objective optimisation.
 
 Emphasise supply-chain resilience, transshipment risk, total landed cost,
 service reliability, and scenario planning.
+The v0.3 replenishment case adds inventory cover, stockout opportunity cost,
+transport service choice and working-capital timing. Call it a public-event case
+reconstruction with constructed order assumptions, not a company implementation.
+
+### FinTech / trade and insurance technology
+
+Emphasise structured trade-data consistency, document integrity, digital
+signatures and separately established issuer-key trust. The public TradeTrust
+transaction is inspiration only. No bank integration, legal eBL, credit approval,
+fraud classifier or TradeTrust-compatible credential has been implemented.
+
+### Finance and business
+
+Emphasise order contribution, liquidity timing, negative-balance funding cost
+and assumptions-based sensitivity. These are corporate-finance/operations
+questions, not asset pricing or quantitative investment. A particular finance
+programme may require additional evidence beyond this maritime project.
 
 ### Intelligent Transportation
 
@@ -62,6 +79,20 @@ In the default report, three regimes return identical joint/cost-only policies;
 the strait-regime CVaR difference is not established as significant.
 
 ## Evidence to prepare
+
+After personally reproducing and understanding the new case, an additional
+description may state:
+
+> Extended the AI-assisted prototype with a Singapore 2024 public-event case,
+> constructed replenishment and working-capital analysis, 27 deterministic
+> sensitivity settings, and structured invoice/packing/insurance checks with
+> an Ed25519 tamper-detection and issuer-key-anchor demonstration; kept public
+> facts, constructed assumptions and computed outputs separately labelled.
+
+Do not replace this with “deployed for a freight forwarder”, “verified bank
+documents”, “secured trade finance” or a percentage savings claim. No authorised
+company transaction data, enterprise pilot or independently observed benefits
+are available.
 
 - A public GitHub repository with clear commit history.
 - A 2–3 minute screen recording of the dashboard.
