@@ -99,9 +99,9 @@ shipment = Shipment(
 )
 scenario = SCENARIOS[scenario_name]
 
-if cost_weight + risk_weight + time_weight + carbon_weight == 0:
-    st.warning("Please give at least one decision priority a weight above zero.")
-    st.stop()
+priorities_valid = cost_weight + risk_weight + time_weight + carbon_weight > 0
+if not priorities_valid:
+    st.warning("Please give at least one decision priority a weight above zero. Independent case, document and research tabs remain available.")
 
 results = [
     simulate_route(
@@ -113,127 +113,124 @@ results = [
     )
     for index, route in enumerate(ROUTES)
 ]
-ranked = rank_routes(
-    results,
-    cost_weight=cost_weight,
-    risk_weight=risk_weight,
-    time_weight=time_weight,
-    carbon_weight=carbon_weight,
-)
+if priorities_valid:
+    ranked = rank_routes(
+        results,
+        cost_weight=cost_weight,
+        risk_weight=risk_weight,
+        time_weight=time_weight,
+        carbon_weight=carbon_weight,
+    )
 
-if not ranked:
-    st.error("No routes are available.")
-    st.stop()
+    best = ranked[0]
+    best_route = next(route for route in ROUTES if route.route_id == best["route_id"])
 
-best = ranked[0]
-best_route = next(route for route in ROUTES if route.route_id == best["route_id"])
+    st.subheader("Recommended option")
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Route", best["route_name"])
+    col2.metric("Estimated claim probability", f"{best['claim_probability']:.2%}")
+    col3.metric("Expected total logistics cost", money(best["expected_total_cost"]))
+    col4.metric("Expected additional delay", f"{best['expected_delay_days']:.1f} days")
 
-st.subheader("Recommended option")
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("Route", best["route_name"])
-col2.metric("Estimated claim probability", f"{best['claim_probability']:.2%}")
-col3.metric("Expected total logistics cost", money(best["expected_total_cost"]))
-col4.metric("Expected additional delay", f"{best['expected_delay_days']:.1f} days")
+    st.success(
+        f"Under **{scenario_name}**, the model recommends **{best_route.name}** "
+        f"({best_route.via}) because it has the lowest weighted decision score."
+    )
 
-st.success(
-    f"Under **{scenario_name}**, the model recommends **{best_route.name}** "
-    f"({best_route.via}) because it has the lowest weighted decision score."
-)
+    display_rows: List[Dict[str, object]] = []
+    for position, row in enumerate(ranked, start=1):
+        display_rows.append(
+            {
+                "Rank": position,
+                "Route": row["route_name"],
+                "Decision score ↓": round(row["decision_score"], 1),
+                "Claim probability": f"{row['claim_probability']:.2%}",
+                "Expected cost": money(row["expected_total_cost"]),
+                "CVaR95 cost": money(row["cvar95_total_cost"]),
+                "Transit + delay": f"{row['duration_days'] + row['expected_delay_days']:.1f} days",
+                "CO₂": f"{row['carbon_kg']:,.0f} kg",
+            }
+        )
 
-display_rows: List[Dict[str, object]] = []
-for position, row in enumerate(ranked, start=1):
-    display_rows.append(
+    st.subheader("Route comparison")
+    st.dataframe(pd.DataFrame(display_rows), width="stretch", hide_index=True)
+
+    chart_data = pd.DataFrame(
         {
-            "Rank": position,
-            "Route": row["route_name"],
-            "Decision score ↓": round(row["decision_score"], 1),
-            "Claim probability": f"{row['claim_probability']:.2%}",
-            "Expected cost": money(row["expected_total_cost"]),
-            "CVaR95 cost": money(row["cvar95_total_cost"]),
-            "Transit + delay": f"{row['duration_days'] + row['expected_delay_days']:.1f} days",
-            "CO₂": f"{row['carbon_kg']:,.0f} kg",
+            "Route": [row["route_name"] for row in ranked for _ in range(4)],
+            "Component": [
+                component
+                for _ in ranked
+                for component in ["Freight", "Insurance premium", "Retained loss", "Delay + carbon"]
+            ],
+            "USD": [
+                value
+                for row in ranked
+                for value in [
+                    row["freight_cost"],
+                    row["insurance_premium"],
+                    row["expected_retained_loss"],
+                    row["expected_delay_cost"] + row["carbon_cost"],
+                ]
+            ],
         }
     )
+    figure = px.bar(
+        chart_data,
+        x="Route",
+        y="USD",
+        color="Component",
+        title="Expected cost composition",
+        barmode="stack",
+    )
+    figure.update_layout(legend_title_text="")
+    st.plotly_chart(figure)
 
-st.subheader("Route comparison")
-st.dataframe(pd.DataFrame(display_rows), width="stretch", hide_index=True)
-
-chart_data = pd.DataFrame(
-    {
-        "Route": [row["route_name"] for row in ranked for _ in range(4)],
-        "Component": [
-            component
-            for _ in ranked
-            for component in ["Freight", "Insurance premium", "Retained loss", "Delay + carbon"]
-        ],
-        "USD": [
-            value
-            for row in ranked
-            for value in [
-                row["freight_cost"],
-                row["insurance_premium"],
-                row["expected_retained_loss"],
-                row["expected_delay_cost"] + row["carbon_cost"],
-            ]
-        ],
-    }
-)
-figure = px.bar(
-    chart_data,
-    x="Route",
-    y="USD",
-    color="Component",
-    title="Expected cost composition",
-    barmode="stack",
-)
-figure.update_layout(legend_title_text="")
-st.plotly_chart(figure)
-
-st.subheader("Illustrative route map")
-map_figure = go.Figure()
-palette = ["#0B6E99", "#F28E2B", "#59A14F"]
-for route, color in zip(ROUTES, palette):
-    points = parse_path(route.path)
-    map_figure.add_trace(
-        go.Scattermap(
-            lat=[point[0] for point in points],
-            lon=[point[1] for point in points],
-            mode="lines+markers",
-            line={"width": 3, "color": color},
-            marker={"size": 8},
-            name=route.name,
-            text=route.via.split(" → "),
-            hovertemplate="%{text}<extra>%{fullData.name}</extra>",
+    st.subheader("Illustrative route map")
+    map_figure = go.Figure()
+    palette = ["#0B6E99", "#F28E2B", "#59A14F"]
+    for route, color in zip(ROUTES, palette):
+        points = parse_path(route.path)
+        map_figure.add_trace(
+            go.Scattermap(
+                lat=[point[0] for point in points],
+                lon=[point[1] for point in points],
+                mode="lines+markers",
+                line={"width": 3, "color": color},
+                marker={"size": 8},
+                name=route.name,
+                text=route.via.split(" → "),
+                hovertemplate="%{text}<extra>%{fullData.name}</extra>",
+            )
         )
+    map_figure.update_layout(
+        map={"style": "open-street-map", "center": {"lat": 15, "lon": 113}, "zoom": 2.6},
+        margin={"l": 0, "r": 0, "t": 0, "b": 0},
+        height=480,
+        legend={"orientation": "h"},
     )
-map_figure.update_layout(
-    map={"style": "open-street-map", "center": {"lat": 15, "lon": 113}, "zoom": 2.6},
-    margin={"l": 0, "r": 0, "t": 0, "b": 0},
-    height=480,
-    legend={"orientation": "h"},
-)
-st.plotly_chart(map_figure)
+    st.plotly_chart(map_figure)
 
-with st.expander("How the model works"):
-    st.markdown(
-        """
-        1. A logistic risk model combines cargo sensitivity, packaging, voyage duration,
-           transshipments, weather exposure, congestion, disruption, and reliability.
-        2. Monte Carlo simulation samples cargo-loss events, loss severity, and delays.
-        3. Insurance reduces retained cargo loss but adds a risk-based premium.
-        4. Routes are normalised and ranked using the selected cost, risk, time, and carbon weights.
+    with st.expander("How the model works"):
+        st.markdown(
+            """
+            1. A logistic risk model combines cargo sensitivity, packaging, voyage duration,
+               transshipments, weather exposure, congestion, disruption, and reliability.
+            2. Monte Carlo simulation samples cargo-loss events, loss severity, and delays.
+            3. Insurance reduces retained cargo loss but adds a risk-based premium.
+            4. Routes are normalised and ranked using the selected cost, risk, time, and carbon weights.
 
-        Every assumption is visible in `harborshield/models.py` so the result can be audited.
-        """
+            Every assumption is visible in `harborshield/models.py` so the result can be audited.
+            """
+        )
+
+    download_frame = pd.DataFrame(ranked)
+    st.download_button(
+        "Download simulation results (CSV)",
+        download_frame.to_csv(index=False).encode("utf-8"),
+        file_name="harborshield_results.csv",
+        mime="text/csv",
     )
-
-download_frame = pd.DataFrame(ranked)
-st.download_button(
-    "Download simulation results (CSV)",
-    download_frame.to_csv(index=False).encode("utf-8"),
-    file_name="harborshield_results.csv",
-    mime="text/csv",
-)
 
 st.divider()
 st.header("Advanced analysis")
@@ -323,116 +320,119 @@ with stress_tab:
         "A robust choice should remain competitive across disruptions, not only "
         "under the currently selected scenario."
     )
-    stress_rows = scenario_stress_test(
-        shipment,
-        ROUTES,
-        iterations=min(iterations, 2_500),
-        cost_weight=cost_weight,
-        risk_weight=risk_weight,
-        time_weight=time_weight,
-        carbon_weight=carbon_weight,
-    )
-    stress_frame = pd.DataFrame(stress_rows)
-    stress_display = stress_frame[
-        [
-            "scenario",
-            "route_name",
-            "rank",
-            "decision_score",
-            "claim_probability",
-            "expected_total_cost",
-            "cvar95_total_cost",
+    if not priorities_valid:
+        st.warning("Cross-scenario weighted ranking requires at least one positive priority.")
+    else:
+        stress_rows = scenario_stress_test(
+            shipment,
+            ROUTES,
+            iterations=min(iterations, 2_500),
+            cost_weight=cost_weight,
+            risk_weight=risk_weight,
+            time_weight=time_weight,
+            carbon_weight=carbon_weight,
+        )
+        stress_frame = pd.DataFrame(stress_rows)
+        stress_display = stress_frame[
+            [
+                "scenario",
+                "route_name",
+                "rank",
+                "decision_score",
+                "claim_probability",
+                "expected_total_cost",
+                "cvar95_total_cost",
+            ]
+        ].copy()
+        stress_display.columns = [
+            "Scenario",
+            "Route",
+            "Rank",
+            "Decision score",
+            "Claim probability",
+            "Expected cost",
+            "CVaR95 cost",
         ]
-    ].copy()
-    stress_display.columns = [
-        "Scenario",
-        "Route",
-        "Rank",
-        "Decision score",
-        "Claim probability",
-        "Expected cost",
-        "CVaR95 cost",
-    ]
-    stress_display["Decision score"] = stress_display["Decision score"].round(1)
-    stress_display["Claim probability"] = stress_display["Claim probability"].map(
-        lambda value: f"{value:.2%}"
-    )
-    stress_display["Expected cost"] = stress_display["Expected cost"].map(money)
-    stress_display["CVaR95 cost"] = stress_display["CVaR95 cost"].map(money)
-    st.dataframe(stress_display, width="stretch", hide_index=True)
+        stress_display["Decision score"] = stress_display["Decision score"].round(1)
+        stress_display["Claim probability"] = stress_display["Claim probability"].map(
+            lambda value: f"{value:.2%}"
+        )
+        stress_display["Expected cost"] = stress_display["Expected cost"].map(money)
+        stress_display["CVaR95 cost"] = stress_display["CVaR95 cost"].map(money)
+        st.dataframe(stress_display, width="stretch", hide_index=True)
 
-    robust_rows = robust_route_summary(stress_rows)
-    robust_display = pd.DataFrame(robust_rows)
-    robust_display = robust_display[
-        [
-            "route_name",
-            "average_rank",
-            "wins",
-            "worst_case_cost",
-            "maximum_claim_probability",
-            "average_cost_regret",
+        robust_rows = robust_route_summary(stress_rows)
+        robust_display = pd.DataFrame(robust_rows)
+        robust_display = robust_display[
+            [
+                "route_name",
+                "average_rank",
+                "wins",
+                "worst_case_cost",
+                "maximum_claim_probability",
+                "average_cost_regret",
+            ]
         ]
-    ]
-    robust_display.columns = [
-        "Route",
-        "Average rank",
-        "Scenario wins",
-        "Worst CVaR95 cost",
-        "Maximum claim probability",
-        "Average cost regret",
-    ]
-    robust_display["Average rank"] = robust_display["Average rank"].round(2)
-    robust_display["Worst CVaR95 cost"] = robust_display["Worst CVaR95 cost"].map(money)
-    robust_display["Maximum claim probability"] = robust_display[
-        "Maximum claim probability"
-    ].map(lambda value: f"{value:.2%}")
-    robust_display["Average cost regret"] = robust_display["Average cost regret"].map(
-        money
-    )
-    st.markdown("**Robustness summary**")
-    st.dataframe(robust_display, width="stretch", hide_index=True)
+        robust_display.columns = [
+            "Route",
+            "Average rank",
+            "Scenario wins",
+            "Worst CVaR95 cost",
+            "Maximum claim probability",
+            "Average cost regret",
+        ]
+        robust_display["Average rank"] = robust_display["Average rank"].round(2)
+        robust_display["Worst CVaR95 cost"] = robust_display["Worst CVaR95 cost"].map(money)
+        robust_display["Maximum claim probability"] = robust_display[
+            "Maximum claim probability"
+        ].map(lambda value: f"{value:.2%}")
+        robust_display["Average cost regret"] = robust_display["Average cost regret"].map(
+            money
+        )
+        st.markdown("**Robustness summary**")
+        st.dataframe(robust_display, width="stretch", hide_index=True)
 
-    stress_chart = px.line(
-        stress_frame,
-        x="scenario",
-        y="expected_total_cost",
-        color="route_name",
-        markers=True,
-        title="Expected cost under disruption scenarios",
-        labels={
-            "scenario": "Scenario",
-            "expected_total_cost": "Expected cost (USD)",
-            "route_name": "Route",
-        },
-    )
-    st.plotly_chart(stress_chart)
+        stress_chart = px.line(
+            stress_frame,
+            x="scenario",
+            y="expected_total_cost",
+            color="route_name",
+            markers=True,
+            title="Expected cost under disruption scenarios",
+            labels={
+                "scenario": "Scenario",
+                "expected_total_cost": "Expected cost (USD)",
+                "route_name": "Route",
+            },
+        )
+        st.plotly_chart(stress_chart)
 
-    sensitivity_rows = risk_weight_sensitivity(
-        shipment,
-        ROUTES,
-        scenario_name,
-        iterations=min(iterations, 2_000),
-    )
-    sensitivity_frame = pd.DataFrame(sensitivity_rows)
-    sensitivity_chart = px.line(
-        sensitivity_frame,
-        x="risk_weight_percent",
-        y="decision_score",
-        color="route_name",
-        markers=True,
-        title="Sensitivity to risk preference",
-        labels={
-            "risk_weight_percent": "Risk weight (%)",
-            "decision_score": "Decision score (lower is better)",
-            "route_name": "Route",
-        },
-    )
-    st.plotly_chart(sensitivity_chart)
-    recommended_by_weight = sensitivity_frame[sensitivity_frame["recommended"]][
-        ["risk_weight_percent", "route_name"]
-    ].copy()
-    recommended_by_weight.columns = ["Risk weight (%)", "Recommended route"]
-    st.dataframe(recommended_by_weight, width="stretch", hide_index=True)
+        sensitivity_rows = risk_weight_sensitivity(
+            shipment,
+            ROUTES,
+            scenario_name,
+            iterations=min(iterations, 2_000),
+        )
+        sensitivity_frame = pd.DataFrame(sensitivity_rows)
+        sensitivity_chart = px.line(
+            sensitivity_frame,
+            x="risk_weight_percent",
+            y="decision_score",
+            color="route_name",
+            markers=True,
+            title="Sensitivity to risk preference",
+            labels={
+                "risk_weight_percent": "Risk weight (%)",
+                "decision_score": "Decision score (lower is better)",
+                "route_name": "Route",
+            },
+        )
+        st.plotly_chart(sensitivity_chart)
+        recommended_by_weight = sensitivity_frame[sensitivity_frame["recommended"]][
+            ["risk_weight_percent", "route_name"]
+        ].copy()
+        recommended_by_weight.columns = ["Risk weight (%)", "Recommended route"]
+        st.dataframe(recommended_by_weight, width="stretch", hide_index=True)
 
 with portfolio_tab:
     st.subheader("Additive-tail allocation baseline")

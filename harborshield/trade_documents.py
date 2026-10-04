@@ -8,6 +8,7 @@ import copy
 from datetime import date
 from decimal import Decimal, InvalidOperation
 import json
+import re
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
@@ -139,7 +140,7 @@ def check_documents(bundle, known_invoice_ids=()):
                               ("insurance_application", insurance, "cover_end")):
         try:
             raw = record.get(key)
-            if not isinstance(raw, str) or len(raw) != 10:
+            if not isinstance(raw, str) or not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", raw):
                 raise ValueError
             dates[key] = date.fromisoformat(raw)
         except (ValueError, TypeError):

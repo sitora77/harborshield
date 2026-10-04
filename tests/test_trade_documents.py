@@ -44,6 +44,15 @@ class DocumentTests(unittest.TestCase):
         self.bundle["invoice"]["departure_date"] = "2024-07-01"
         self.assertIn("DEPARTURE_OUTSIDE_COVER_WINDOW", self.codes(self.bundle))
 
+    def test_only_calendar_yyyy_mm_dd_on_all_python_versions(self):
+        for value in ("2024-W21-1", "20240520", "2024-5-20", "2024-02-30", "２０２４-05-20"):
+            with self.subTest(value=value):
+                self.bundle["invoice"]["departure_date"] = value
+                self.assertIn("INVALID_DATE", self.codes(self.bundle))
+        self.bundle["invoice"]["departure_date"] = "2024-02-29"
+        self.bundle["insurance_application"].update(cover_start="2024-02-28", cover_end="2024-03-01")
+        self.assertTrue(check_documents(self.bundle)["consistent"])
+
     def test_duplicate_ids_and_duplicate_register(self):
         self.bundle["packing_list"]["document_id"] = self.bundle["invoice"]["document_id"]
         self.assertIn("DUPLICATE_DOCUMENT_ID", self.codes(self.bundle))

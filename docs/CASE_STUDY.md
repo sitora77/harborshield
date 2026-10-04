@@ -1,10 +1,10 @@
 # Singapore 2024: port delay, inventory and working capital
 
-Version 0.3 · case reconstruction reviewed 4 October 2026
+Version 0.4 · case reconstruction reviewed 4 October 2026
 
 Public event context with **entirely constructed** order and option inputs. Not a company pilot, observed savings or a financing offer.
 
-[Try the browser calculator](https://sitorastudio.com/case-study.html). The full document/signature lab runs in the local Streamlit app.
+[Try the browser calculator](https://sitorastudio.com/case-study-en.html). The full document/signature lab runs in the local Streamlit app.
 
 ## Public facts and provenance
 
@@ -48,6 +48,7 @@ In these assumptions, the lowest burden changes from **Standard sea service** at
 
 ## Assumptions and exclusions
 
+- The 140,000 USD external-funding limit, day-15 stock-availability deadline and zero minimum net contribution are constructed screening criteria, not confirmed credit or a contractual delivery commitment. Peak funding already deducts own cash. Null funding/deadline means not applied; zero is a binding limit. Cost ranking is retained even when no option is eligible.
 - 2.5 days is a constructed affected-shipment scenario inspired by the reported 2–3-day wait; it is not the mean for all Singapore arrivals.
 - 0 and 7 days are counterfactual sensitivity settings, not reported shipment observations.
 - Every service option, freight amount, premium, interest rate, demand and document-release time is hypothetical. Priority capacity and alternate-port customs feasibility are unverified.
@@ -60,7 +61,15 @@ In these assumptions, the lowest burden changes from **Standard sea service** at
 
 27 combinations of port delay (0 / 2.5 / 7 days), annual funding (3 / 8 / 15%) and stock cover (8 / 12 / 18 days). These are constructed settings, not a calibrated probability distribution. Full results are in `reports/case_study.json`.
 
+## Feasibility before recommendation
+
+Cost ranking remains visible. Only options meeting the assumed external-funding limit, latest stock-availability day and minimum net economic contribution are eligible. Peak funding already deducts own cash. Null funding/deadline means not applied; zero is binding. When no option is eligible, no recommendation is made.
+
+At 2.5 days of assumed port wait, US$129,000 and day 15 select standard sea; tightening the deadline to day 12 leaves no eligible option. US$130,200 and day 12 admit the priority option exactly on both boundaries. These are assumed screening examples, not confirmed credit or delivery commitments. Four examples with full option-level reasons are exported in the JSON report.
+
 ## Document checks and signatures
+
+The local app generates a document bundle from the current constructed order, including the same case inputs, their SHA-256 digest and the screening decision. Only the selected, consistency-checked DEMO bundle is signed; invalid uploads block signing rather than substituting a default order. Uploaded context fields are not certified by the consistency rules, input digest or signature.
 
 Supported input is structured JSON, not arbitrary scans/PDFs. Rules check IDs, currency, SKU quantities, invoice arithmetic, declared cargo value, the explicitly supplied insured-value multiplier and requested cover dates. Register-based duplicate invoice warnings are not fraud findings.
 
@@ -76,7 +85,7 @@ node scripts/test_case_calculator.cjs
 python -m unittest discover -s tests -v
 ```
 
-Browser and Python calculations are cross-checked on 27 sensitivity combinations plus zero-rate, zero-demand and ample-own-cash boundaries. The browser calculator is executable locally and on GitHub Pages. The uploaded-document and signing lab requires local Streamlit; the website's document table is a static test snapshot.
+Browser and Python calculations are cross-checked on 27 sensitivity combinations, four constraint examples, no-eligible decisions, zero-rate, zero-demand and ample-own-cash boundaries. Both presentation languages share one template and calculator; switching language preserves inputs. The browser calculator is executable locally and on GitHub Pages. The uploaded-document and signing lab requires local Streamlit; the website's document table is a static test snapshot.
 
 ## Application relevance
 

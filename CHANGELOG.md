@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.0 · 2026-10-04
+
+- Added English/Chinese case presentation from one template, with shared browser
+  calculations and input-preserving language switching; added an English project brief.
+- Separated cost ranking from eligibility under constructed funding, availability
+  and contribution criteria; no eligible option means no recommendation.
+- Added four funding/deadline examples and eligibility to all 27 sensitivity settings.
+- Generated current-order invoice/packing/insurance JSON with input digest and
+  decision context; sign the checked bundle, blocking invalid uploaded inputs.
+- Fixed all-zero route priorities stopping independent dashboard tabs, ISO week
+  dates passing on newer Python, and composite order values exceeding ledger bounds.
+- Expanded to 68 passing Python tests plus JavaScript/Python agreement checks;
+  document tests also pass on Python 3.12. GitHub Actions remains an inactive template.
+
 ## 0.3.0 · 2026-10-04
 
 - Added MPA Singapore 2024 delay and TradeTrust 2023 transaction source registers,

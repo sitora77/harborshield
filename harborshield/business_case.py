@@ -4,6 +4,8 @@ import json
 import math
 from pathlib import Path
 
+MAX_EVENT_AMOUNT = 1e15
+
 
 def load_case(path):
     case = json.loads(Path(path).read_text(encoding="utf-8"))
@@ -41,6 +43,18 @@ def validate_case(case):
     _number(order, "supplier_deposit_fraction", 0, 1)
     _number(order, "annual_funding_rate", 0, 1)
     _number(case, "selected_port_delay_days", 0, 365)
+    constraints = case.get("constraints", {})
+    if not isinstance(constraints, dict):
+        raise ValueError("constraints must be an object")
+    for key, maximum in (("funding_limit", MAX_EVENT_AMOUNT), ("latest_availability_day", 5000)):
+        if constraints.get(key) is not None:
+            _number(constraints, key, 0, maximum)
+    if "minimum_net_contribution" in constraints:
+        _number(constraints, "minimum_net_contribution", 0, MAX_EVENT_AMOUNT)
+    purchase = quantity * order["unit_purchase_price"]
+    sales = quantity * order["unit_sale_price"]
+    if max(purchase, sales) > MAX_EVENT_AMOUNT:
+        raise ValueError("Order purchase/sales values exceed the supported 1e15 USD event limit")
     options = case.get("options")
     if not isinstance(options, list) or not 1 <= len(options) <= 20:
         raise ValueError("Provide 1–20 options")
@@ -56,6 +70,9 @@ def validate_case(case):
         _number(option, "port_delay_multiplier", 0, 10)
         for key in ("freight_cost", "insurance_premium", "other_logistics_cost"):
             _number(option, key)
+        logistics = sum(option[key] for key in ("freight_cost", "insurance_premium", "other_logistics_cost"))
+        if purchase + logistics > MAX_EVENT_AMOUNT:
+            raise ValueError("Purchase plus logistics exceeds the supported 1e15 USD event limit")
     if len(ids) != len(set(ids)):
         raise ValueError("Option ids must be unique")
 
@@ -73,7 +90,7 @@ def funding_ledger(events, initial_cash, annual_rate):
     grouped = {}
     for event in events:
         day = _number(event, "day", -365, 5000)
-        amount = _number(event, "amount", -1e15, 1e15)
+        amount = _number(event, "amount", -MAX_EVENT_AMOUNT, MAX_EVENT_AMOUNT)
         grouped.setdefault(day, []).append((str(event.get("label", "Cash flow")), amount))
     balance, area, peak = float(initial_cash), 0.0, 0.0
     previous = min(grouped)
@@ -131,7 +148,29 @@ def compare_options(case, port_delay_days=None):
     validate_case(case)
     delay = case["selected_port_delay_days"] if port_delay_days is None else port_delay_days
     rows = [evaluate_option(case["order"], option, delay) for option in case["options"]]
+    constraints = case.get("constraints", {})
+    for row in rows:
+        reasons = []
+        if constraints.get("funding_limit") is not None and row["peak_funding_need"] > constraints["funding_limit"]:
+            reasons.append("FUNDING_LIMIT_EXCEEDED")
+        if constraints.get("latest_availability_day") is not None and row["availability_day"] > constraints["latest_availability_day"]:
+            reasons.append("AVAILABILITY_DEADLINE_MISSED")
+        row["constraint_feasible"] = not reasons
+        row["economically_acceptable"] = row["net_economic_contribution"] >= constraints.get("minimum_net_contribution", 0)
+        if not row["economically_acceptable"]:
+            reasons.append("CONTRIBUTION_BELOW_MINIMUM")
+        row["ineligibility_reasons"] = reasons
+        row["eligible"] = not reasons
     return sorted(rows, key=lambda row: (row["economic_burden"], row["option_id"]))
+
+
+def decision_summary(rows):
+    """Never confuse unconstrained cost rank with an admissible recommendation."""
+    eligible = [row for row in rows if row["eligible"]]
+    return {"status": "eligible_option_found" if eligible else "no_eligible_option",
+            "recommended_option_id": eligible[0]["option_id"] if eligible else None,
+            "unconstrained_lowest_burden_option_id": rows[0]["option_id"] if rows else None,
+            "eligible_option_count": len(eligible)}
 
 
 def case_report(case):
@@ -146,9 +185,19 @@ def case_report(case):
                 rows = compare_options(variant, delay)
                 sensitivity.append({"port_delay_days": delay, "annual_funding_rate": rate,
                                     "stock_cover_days": stock, "lowest_burden_option": rows[0]["option_id"],
-                                    "minimum_economic_burden": rows[0]["economic_burden"]})
-    return {"case_id": case.get("case_id", "user-supplied"), "version": "0.3",
+                                    "minimum_economic_burden": rows[0]["economic_burden"],
+                                    **decision_summary(rows)})
+    constraint_examples = []
+    for limit, deadline in ((129000, 15), (129000, 12), (130200, 12), (0, 0)):
+        variant = copy.deepcopy(case)
+        variant["constraints"] = {"funding_limit": limit, "latest_availability_day": deadline,
+                                  "minimum_net_contribution": 0}
+        rows = compare_options(variant)
+        constraint_examples.append({"constraints": variant["constraints"],
+                                    "comparison": rows, **decision_summary(rows)})
+    return {"case_id": case.get("case_id", "user-supplied"), "version": "0.4",
             "data_status": "Constructed decision analysis, not observed savings or a financing offer",
             "inputs": copy.deepcopy(case), "selected_comparison": selected,
+            "selected_decision": decision_summary(selected),
             "no_port_delay_comparison": compare_options(case, 0),
-            "sensitivity": sensitivity}
+            "sensitivity": sensitivity, "constraint_examples": constraint_examples}

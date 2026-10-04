@@ -5,16 +5,19 @@
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-1f6feb)](https://www.python.org/)
 [![Licence: MIT](https://img.shields.io/badge/Licence-MIT-2ea44f)](LICENSE)
 
-**v0.3:** a Singapore 2024 public-event case, constructed replenishment economics,
-working-capital cash ledger, structured trade-document checks and standalone Ed25519 signatures.
-[Try the online case calculator](https://sitorastudio.com/case-study.html) ·
+**v0.4:** a bilingual Singapore 2024 public-event case with constructed replenishment
+economics, working-capital ledger, explicit funding/deadline/contribution screening
+and same-order structured documents with DEMO Ed25519 signatures.
+[English case calculator](https://sitorastudio.com/case-study-en.html) ·
+[中文案例](https://sitorastudio.com/case-study.html) ·
+[English project brief](docs/PROJECT_BRIEF_EN.md) ·
 [Read the case and assumptions](docs/CASE_STUDY.md) ·
 [单证实验指南](docs/TRADE_DOCUMENT_GUIDE_ZH.md).
 
-![Live browser case with constructed inputs and computed economic burden](assets/business-case.png)
+![English browser case with constructed inputs, feasibility criteria and computed economic burden](assets/business-case.png)
 
-The case screenshot shows constructed default order assumptions on the live
-website, not a real customer transaction or bank financing offer.
+The case screenshot shows constructed default order assumptions, not a real
+customer transaction or bank financing offer.
 
 **v0.2 research layer:** joint batch CVaR, common disruption shocks, independent synthetic
 evaluation, four policy comparisons, confidence intervals and reproducible reports.
@@ -24,7 +27,7 @@ evaluation, four policy comparisons, confidence intervals and reproducible repor
 
 The screenshot shows synthetic research inputs. The public portfolio hosts a
 [static research evidence page](https://sitorastudio.com/experiment.html) and a
-[browser-based order-economics calculator](https://sitorastudio.com/case-study.html).
+[browser-based order-economics calculator](https://sitorastudio.com/case-study-en.html).
 The full Streamlit dashboard, document uploads and signing lab run locally unless
 separately deployed on a Python host. The case page's document results are static snapshots.
 
@@ -54,7 +57,11 @@ flowchart LR
     M[Public-event register] -. Context, not calibration .-> N[Constructed order case]
     N --> O[Replenishment + working-capital ledger]
     O --> K
-    P[Constructed structured documents] --> Q[Consistency + signature checks]
+    O --> R[Funding + deadline + contribution screening]
+    R --> K
+    N --> P[Same-order constructed documents]
+    R -. Decision context .-> P
+    P --> Q[Consistency + signature checks]
     Q --> K
 ```
 
@@ -69,9 +76,12 @@ scenario analysis instead of presenting a black-box recommendation.
 
 - Public Singapore 2024 event register, separately labelled constructed order/options.
 - Replenishment, stockout opportunity cost and exact event-based working-capital ledger.
+- Funding/deadline/contribution screening; no recommendation when no option is eligible.
+- English and Chinese presentation from a shared template and calculator, preserving inputs on language switch.
 - Interactive browser/Python calculations cross-checked across 27 sensitivity settings.
 - Invoice, packing-list and insurance-application consistency checks on structured JSON.
 - Ed25519 content-integrity demo with a separately supplied public-key anchor.
+- Generated documents tied to the current constructed order, input digest and decision; invalid uploads block signing.
 - Four disruption scenarios: normal operations, monsoon weather, port congestion,
   and strait disruption.
 - Interpretable cargo-claim probability model.
@@ -137,7 +147,7 @@ transitive lock. Test worlds are never used for policy selection. Baselines may
 coincide; superiority or real-world savings are not assumed. Cargo value and
 costs are per container, not per batch.
 
-The v0.3 deterministic case is separate from the claims simulation. Public facts
+The v0.4 deterministic case is separate from the claims simulation. Public facts
 do not calibrate delay distributions or insurance/credit risk. All order prices,
 service times, rates and document fixtures are constructed, not anonymised company
 data. No real-world savings, bank integration, credit scoring, TradeTrust
@@ -146,6 +156,13 @@ interoperability or legally effective eBL/title transfer is claimed.
 Local model and dashboard tests pass. A [CI template](ci/tests.yml.example)
 is supplied, but GitHub Actions is **not yet enabled**: the current publishing
 credential does not grant workflow modification. See [activation notes](ci/README.md).
+
+The current verification run passes 68 Python tests, with separate JavaScript/Python
+agreement checks for all 27 sensitivity settings, four constraint examples and
+input boundaries. Strict YYYY-MM-DD document checks also pass on Python 3.12.
+Financial purchase/sales values and purchase plus logistics are limited to 1e15
+USD to match ledger event bounds; this numerical ceiling is not a realistic
+transaction-size recommendation. Document amounts have a separate 1e12 limit.
 
 ## Project structure
 
@@ -186,7 +203,8 @@ congestion, and emissions data, then report uncertainty and validation results.
 - [Literature, open-source, and data traceability](docs/LITERATURE_AND_OPEN_SOURCE.md)
 - [Joint-risk experiment report](docs/EXPERIMENT_REPORT.md)
 - [Beginner learning guide in Chinese](docs/LEARNING_GUIDE_ZH.md)
-- [v0.2 project explanation in Chinese](docs/PROJECT_GUIDE_ZH.md)
+- [Project explanation in Chinese](docs/PROJECT_GUIDE_ZH.md)
+- [Three hands-on case experiments to complete yourself](docs/CASE_WALKTHROUGH_ZH.md)
 - [Application positioning notes](docs/APPLICATION_NOTES.md)
 
 ## Development transparency

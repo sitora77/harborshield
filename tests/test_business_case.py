@@ -4,7 +4,7 @@ from pathlib import Path
 import unittest
 
 from harborshield.business_case import (case_report, compare_options, evaluate_option,
-                                      funding_ledger, load_case, validate_case)
+                                      decision_summary, funding_ledger, load_case, validate_case)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -101,6 +101,69 @@ class BusinessCaseTests(unittest.TestCase):
         self.assertTrue(replacement["signature_valid"])
         self.assertFalse(replacement["issuer_key_matches_anchor"])
         self.assertTrue(all(not row["document_truth_verified"] for row in evidence["signature_demonstration"]))
+
+    def test_cost_rank_is_not_recommendation_when_funding_binds(self):
+        self.case["constraints"].update(funding_limit=129000, latest_availability_day=15)
+        rows = compare_options(self.case)
+        self.assertEqual(rows[0]["option_id"], "priority_sea")
+        self.assertFalse(rows[0]["eligible"])
+        self.assertEqual(decision_summary(rows)["recommended_option_id"], "standard_sea")
+
+    def test_no_option_meeting_funding_and_deadline_is_not_recommended(self):
+        self.case["constraints"].update(funding_limit=129000, latest_availability_day=12)
+        decision = decision_summary(compare_options(self.case))
+        self.assertEqual(decision["status"], "no_eligible_option")
+        self.assertIsNone(decision["recommended_option_id"])
+
+    def test_constraints_include_exact_boundaries(self):
+        self.case["constraints"].update(funding_limit=130200, latest_availability_day=12)
+        self.assertEqual(decision_summary(compare_options(self.case))["recommended_option_id"], "priority_sea")
+        self.case["constraints"]["funding_limit"] -= .01
+        self.assertIsNone(decision_summary(compare_options(self.case))["recommended_option_id"])
+
+    def test_zero_constraint_is_not_missing_and_own_cash_not_double_counted(self):
+        self.case["constraints"].update(funding_limit=0, latest_availability_day=0)
+        self.assertIsNone(decision_summary(compare_options(self.case))["recommended_option_id"])
+        self.case["constraints"].update(funding_limit=None, latest_availability_day=None)
+        self.assertTrue(all(r["constraint_feasible"] for r in compare_options(self.case)))
+        self.case["constraints"].update(funding_limit=0, latest_availability_day=None)
+        self.case["order"]["initial_cash"] = 1000000
+        self.assertTrue(all(r["eligible"] for r in compare_options(self.case)))
+
+    def test_negative_contribution_blocks_even_unconstrained_cheap_option(self):
+        self.case["selected_port_delay_days"] = 14
+        self.case["order"].update(stock_cover_days=0, daily_demand=10000, initial_cash=0,
+                                  annual_funding_rate=.3, customer_payment_days=90)
+        self.case["constraints"].update(funding_limit=None, latest_availability_day=None)
+        rows = compare_options(self.case)
+        self.assertTrue(all(r["constraint_feasible"] and not r["economically_acceptable"] for r in rows))
+        self.assertIsNone(decision_summary(rows)["recommended_option_id"])
+
+    def test_minimum_contribution_and_invalid_constraints(self):
+        self.case["constraints"]["minimum_net_contribution"] = 60000
+        self.assertIsNone(decision_summary(compare_options(self.case))["recommended_option_id"])
+        for value in (-1, True, float("nan")):
+            self.case["constraints"] = {"funding_limit": value}
+            with self.assertRaises(ValueError):
+                validate_case(self.case)
+
+    def test_composite_amount_limits_match_ledger_and_direct_api(self):
+        self.case["order"].update(quantity=10000000, unit_purchase_price=100000000,
+                                  unit_sale_price=100000000)
+        for option in self.case["options"]:
+            option.update(freight_cost=0, insurance_premium=0, other_logistics_cost=0)
+        compare_options(self.case)  # Exactly 1e15 is supported, including day-zero deposit.
+        self.case["order"]["supplier_deposit_day"] = 0
+        compare_options(self.case)
+        self.case["options"][0]["freight_cost"] = 1
+        with self.assertRaises(ValueError):
+            validate_case(self.case)
+        with self.assertRaises(ValueError):
+            evaluate_option(self.case["order"], self.case["options"][0], 2.5)
+        self.case["options"][0]["freight_cost"] = 0
+        self.case["order"]["unit_sale_price"] += 1
+        with self.assertRaises(ValueError):
+            compare_options(self.case)
 
 
 if __name__ == "__main__":

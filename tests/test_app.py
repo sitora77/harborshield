@@ -1,5 +1,8 @@
 """Browser-independent Streamlit interaction checks."""
 import unittest
+import json
+from unittest.mock import patch
+from types import SimpleNamespace
 from pathlib import Path
 from streamlit.testing.v1 import AppTest
 
@@ -44,6 +47,51 @@ class DashboardTests(unittest.TestCase):
         app.run()
         self.assertEqual(len(app.exception), 0)
         self.assertTrue(any("weight above zero" in warning.value for warning in app.warning))
+        self.assertEqual(len(app.tabs), 7)
+        self.assertTrue(app.session_state["document_checks"]["consistent"])
+        self.assertIn("case_comparison", app.session_state)
+        self.assertTrue(any(item.label == "Run joint-risk experiment" for item in app.button))
+        next(item for item in app.slider if item.label == "Case port-delay assumption (days)").set_value(0).run()
+        self.assertEqual(app.session_state["case_decision"]["recommended_option_id"], "standard_sea")
+
+    def test_funding_constraint_changes_selection_and_no_option_is_clear(self):
+        app = AppTest.from_file(str(APP), default_timeout=30).run()
+        next(item for item in app.number_input if item.label == "Assumed external funding limit (USD)").set_value(129000).run()
+        self.assertEqual(app.session_state["case_decision"]["recommended_option_id"], "standard_sea")
+        next(item for item in app.number_input if item.label == "Latest stock-availability day").set_value(12.0).run()
+        self.assertIsNone(app.session_state["case_decision"]["recommended_option_id"])
+        self.assertTrue(any("No eligible option" in item.value for item in app.error))
+
+    def test_signature_payload_tracks_current_order_context(self):
+        app = AppTest.from_file(str(APP), default_timeout=30).run()
+        original = app.session_state["signed_demo_payload"]["case_context"]["inputs_sha256"]
+        next(item for item in app.slider if item.label == "Case port-delay assumption (days)").set_value(0).run()
+        payload = app.session_state["signed_demo_payload"]
+        self.assertNotEqual(original, payload["case_context"]["inputs_sha256"])
+        self.assertEqual(payload["case_context"]["decision"]["recommended_option_id"], "standard_sea")
+        self.assertEqual(payload["invoice"]["order_id"], app.session_state["current_business_case"]["order"]["order_id"])
+
+    def test_invalid_upload_blocks_signing_instead_of_default_substitution(self):
+        upload = SimpleNamespace(getvalue=lambda: b'{"invoice":{}}')
+        with patch("streamlit.file_uploader", return_value=upload):
+            app = AppTest.from_file(str(APP), default_timeout=30).run()
+        self.assertEqual(len(app.exception), 0)
+        self.assertEqual(app.session_state["signature_demo_result"]["status"], "blocked_inconsistent_bundle")
+        self.assertFalse(any(item.label == "Signature test case" for item in app.selectbox))
+
+    def test_valid_uploaded_string_amount_signs_that_bundle_and_tamper_is_detected(self):
+        bundle = json.loads((APP.parent / "data/cases/demo_documents.json").read_text())
+        bundle["invoice"]["total_value"] = "150000"
+        for document in ("invoice", "packing_list", "insurance_application"):
+            bundle[document]["order_id"] = "DEMO-UPLOADED-ORDER"
+        upload = SimpleNamespace(getvalue=lambda: json.dumps(bundle).encode())
+        with patch("streamlit.file_uploader", return_value=upload):
+            app = AppTest.from_file(str(APP), default_timeout=30).run()
+            self.assertTrue(app.session_state["signature_demo_result"]["accepted_demo_signature"])
+            self.assertEqual(app.session_state["signed_demo_payload"], bundle)
+            next(item for item in app.selectbox if item.label == "Signature test case").set_value("Amount altered after signing").run()
+        self.assertEqual(len(app.exception), 0)
+        self.assertFalse(app.session_state["signature_demo_result"]["signature_valid"])
 
 
 if __name__ == "__main__":
