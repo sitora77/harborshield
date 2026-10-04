@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """Rebuild the public-event case report and the browser calculator from fixtures."""
 import copy
+import hashlib
 from html import escape
 import json
 from pathlib import Path
@@ -110,8 +111,10 @@ def build_html(report):
     doc_rows = "".join(f'<tr><td>{escape(r["test_case"])}</td><td>{str(r["expected_consistent"]).lower()}</td><td>{str(r["observed_consistent"]).lower()}</td><td>{escape(", ".join(r["issue_codes"]) or "No rule discrepancies")}</td></tr>' for r in report["document_evidence"]["consistency_fixtures"])
     sig_rows = "".join(f'<tr><td>{escape(r["test_case"])}</td><td>{str(r["signature_valid"]).lower()}</td><td>{str(r["issuer_key_matches_anchor"]).lower()}</td><td>{str(r["document_truth_verified"]).lower()}</td></tr>' for r in report["document_evidence"]["signature_demonstration"])
     inputs = json.dumps(c, ensure_ascii=False).replace("<", "\\u003c")
+    asset_versions = {name: hashlib.sha256((ROOT / "web" / name).read_bytes()).hexdigest()[:12]
+                      for name in ("case-calculator.js", "case-page.js", "case-study.css")}
     return f'''<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>HarborShield · 真实事件与订单现金流案例</title><meta name="description" content="Singapore 2024 port delay, constructed order economics and trade-document integrity. An interactive, assumption-led HarborShield case study."><link rel="stylesheet" href="case-study.css"></head>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>HarborShield · 真实事件与订单现金流案例</title><meta name="description" content="Singapore 2024 port delay, constructed order economics and trade-document integrity. An interactive, assumption-led HarborShield case study."><link rel="stylesheet" href="case-study.css?v={asset_versions['case-study.css']}"></head>
 <body><main><nav><a href="https://sitorastudio.com/">Sitora Studio</a><div><a href="https://sitorastudio.com/experiment.html">v0.2 风险实验</a> · <a href="https://github.com/sitora77/harborshield">GitHub 源码</a></div></nav>
 <header><p class="eyebrow">HARBORSHIELD / v0.3 / PUBLIC-EVENT CASE</p><h1>港口延误，如何影响<br>一笔订单的现金流？</h1><p class="subtitle">Singapore 2024 · replenishment, working capital and trade-document integrity</p><p>从公开港口事件出发，比较“省运费”“避免缺货”“减少资金占用”之间的取舍。调整下面的假设，结果会在你的浏览器中重新计算。</p></header>
 <div class="boundary">真实的是公开事件；订单、运费、保费、利率及备选服务均为构造示例。这里没有真实客户交易、企业部署、银行授信或实际节省金额。</div>
@@ -125,7 +128,7 @@ def build_html(report):
 <section class="columns"><article class="panel"><p class="tag">02 / SUPPLY CHAIN MANAGEMENT</p><h2>更快不一定更划算</h2><p>库存够用时，额外支付加急运费可能不值得；库存不足时，省下的运费可能抵不过缺货损失。把延误改成 0 天，再增加库存覆盖，观察方案排序如何变化。</p><p class="note">三种方案的可订舱性、优先服务及替代港口通关条件均未验证。27 组敏感性情景是确定性比较，不是预测概率。</p></article><article class="panel"><p class="tag">03 / FINANCE & BUSINESS</p><h2>利润和现金不是一回事</h2><p>订单有预计毛利，也可能在回款前需要资金。现金事件表展示订金、尾款、运费与收款的时间差。资金利息按负现金余额的持续时间计算，而非对全部货值重复收费。</p><p class="note">利率不是贷款报价；模型未包含银行审批、汇率、税费、复利或公司全部经营现金流。</p></article></section>
 <section class="panel"><p class="tag">04 / TRADE-DOCUMENT INTEGRITY</p><h2>单证一致，不等于交易已被证明</h2><p>本地应用可检查结构化发票、装箱单和投保申请，并演示数字签名。下表是构造测试的静态快照，不是网页正在读取你的文件，也不是对真实单据的识别准确率。</p><div class="table-scroll"><table><thead><tr><th>构造测试</th><th>预期一致</th><th>实际一致</th><th>规则提示</th></tr></thead><tbody>{doc_rows}</tbody></table></div><h3>篡改内容与替换密钥，是两种不同的问题</h3><div class="table-scroll"><table><thead><tr><th>签名测试</th><th>签名数学上有效</th><th>符合单独提供的原始密钥</th><th>真实交易已验证</th></tr></thead><tbody>{sig_rows}</tbody></table></div><p class="note">使用 cryptography 的 Ed25519，密钥只在内存生成。签名能检查内容完整性，但不证明真实货物、保单有效、信用资格或法律上的货权。项目未接入 TradeTrust、银行或区块链；也不符合它们的凭证格式。</p><a href="demo_documents.json" download>下载构造单证 JSON</a> · <a href="https://github.com/sitora77/harborshield/blob/main/docs/TRADE_DOCUMENT_GUIDE_ZH.md">本地单证实验使用指南</a></section>
 <section class="panel"><p class="tag">05 / PUBLIC SOURCES & ASSUMPTIONS</p><h2>可核查的来源与边界</h2>{sources}<details><summary>展开全部计算假设与排除项</summary><ul>{assumptions}</ul></details><p><a href="case_study.json" download>下载完整案例及 27 组敏感性结果</a> · <a href="https://github.com/sitora77/harborshield/blob/main/docs/CASE_STUDY.md">阅读可复现实验说明</a></p></section>
-<footer>Built with AI-assisted coding. Public facts, constructed assumptions and computed outputs are kept separate. Browser calculator works without a server; document upload/signing requires local Streamlit. Version 0.3 · 4 October 2026.</footer></main><script id="case-inputs" type="application/json">{inputs}</script><script src="case-calculator.js"></script><script src="case-page.js"></script></body></html>'''
+<footer>Built with AI-assisted coding. Public facts, constructed assumptions and computed outputs are kept separate. Browser calculator works without a server; document upload/signing requires local Streamlit. Version 0.3 · 4 October 2026.</footer></main><script id="case-inputs" type="application/json">{inputs}</script><script src="case-calculator.js?v={asset_versions['case-calculator.js']}"></script><script src="case-page.js?v={asset_versions['case-page.js']}"></script></body></html>'''
 
 
 def main():
