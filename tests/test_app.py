@@ -10,6 +10,24 @@ APP = Path(__file__).resolve().parents[1] / "app.py"
 
 
 class DashboardTests(unittest.TestCase):
+    def test_real_data_tab_runs_independently_of_synthetic_shipment(self):
+        app = AppTest.from_file(str(APP), default_timeout=30).run()
+        self.assertEqual(len(app.exception), 0)
+        report = app.session_state["real_data_summary"]
+        self.assertEqual(report["selected_method"], "mean_28")
+        self.assertEqual(report["splits"]["test"]["n"], 366)
+        next(item for item in app.number_input if item.label == "Cargo value (USD)").set_value(500000).run()
+        self.assertEqual(app.session_state["real_data_summary"], report)
+
+    def test_real_data_failure_clears_previous_results_without_substitution(self):
+        app = AppTest.from_file(str(APP), default_timeout=30).run()
+        self.assertIn("real_data_summary", app.session_state)
+        with patch("harborshield.portwatch_ui.load_snapshot", side_effect=ValueError("Missing dates")):
+            app.run()
+        self.assertEqual(len(app.exception), 0)
+        self.assertNotIn("real_data_summary", app.session_state)
+        self.assertTrue(any("No synthetic data is substituted" in item.value for item in app.error))
+
     def test_case_inputs_update_decision_and_funding(self):
         app = AppTest.from_file(str(APP), default_timeout=30).run()
         self.assertEqual(len(app.exception), 0)
@@ -47,7 +65,8 @@ class DashboardTests(unittest.TestCase):
         app.run()
         self.assertEqual(len(app.exception), 0)
         self.assertTrue(any("weight above zero" in warning.value for warning in app.warning))
-        self.assertEqual(len(app.tabs), 7)
+        self.assertEqual(len(app.tabs), 8)
+        self.assertEqual(app.session_state["real_data_summary"]["quality"]["rows"], 1096)
         self.assertTrue(app.session_state["document_checks"]["consistent"])
         self.assertIn("case_comparison", app.session_state)
         self.assertTrue(any(item.label == "Run joint-risk experiment" for item in app.button))

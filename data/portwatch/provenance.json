@@ -1,0 +1,40 @@
+{
+  "publisher": "IMF PortWatch; source AIS via UN Global Platform",
+  "dataset": "https://portwatch.imf.org/datasets/83b1bbc7b3354c5fb1f40673bb8f852e/about",
+  "endpoint": "https://services9.arcgis.com/weJ1QsnbMYJlCHdG/arcgis/rest/services/Daily_Ports_Data/FeatureServer/0/query",
+  "attribution": "Sources: UN Global Platform; IMF PortWatch (portwatch.imf.org).",
+  "terms": "https://www.imf.org/en/about/copyright-and-terms",
+  "scope": "Singapore port1201 only; not all Singapore-area port boundaries",
+  "start": "2022-01-01",
+  "end": "2024-12-31",
+  "source_count": 1096,
+  "count_query_url": "https://services9.arcgis.com/weJ1QsnbMYJlCHdG/arcgis/rest/services/Daily_Ports_Data/FeatureServer/0/query?f=json&where=portid+%3D+%27port1201%27+AND+date+%3E%3D+DATE+%272022-01-01%27+AND+date+%3C%3D+DATE+%272024-12-31%27&returnCountOnly=true",
+  "retrieved_at_utc": "2026-10-04T14:34:46+00:00",
+  "snapshot_sha256": "3238a37352ae993c4cb4e44848268aab621978f835a74ef1528e8e2e073f0985",
+  "raw_pages": [
+    {
+      "file": "raw/page-0000.json",
+      "offset": 0,
+      "rows": 500,
+      "sha256": "fcb090dcca4ec13ae6157c43f888136f0cb9db87f423d9b4db2cd770acea666a",
+      "query_url": "https://services9.arcgis.com/weJ1QsnbMYJlCHdG/arcgis/rest/services/Daily_Ports_Data/FeatureServer/0/query?f=json&where=portid+%3D+%27port1201%27+AND+date+%3E%3D+DATE+%272022-01-01%27+AND+date+%3C%3D+DATE+%272024-12-31%27&outFields=date%2Cportid%2Cportname%2Cportcalls_container%2Cportcalls&orderByFields=date+ASC%2CObjectId+ASC&resultOffset=0&resultRecordCount=500&returnGeometry=false"
+    },
+    {
+      "file": "raw/page-0500.json",
+      "offset": 500,
+      "rows": 500,
+      "sha256": "0db85f55b353308e670d9bdd0e4f4d1646af95997731d44a9bc77043c11317dc",
+      "query_url": "https://services9.arcgis.com/weJ1QsnbMYJlCHdG/arcgis/rest/services/Daily_Ports_Data/FeatureServer/0/query?f=json&where=portid+%3D+%27port1201%27+AND+date+%3E%3D+DATE+%272022-01-01%27+AND+date+%3C%3D+DATE+%272024-12-31%27&outFields=date%2Cportid%2Cportname%2Cportcalls_container%2Cportcalls&orderByFields=date+ASC%2CObjectId+ASC&resultOffset=500&resultRecordCount=500&returnGeometry=false"
+    },
+    {
+      "file": "raw/page-1000.json",
+      "offset": 1000,
+      "rows": 96,
+      "sha256": "b62ba4d7271fc3a00559da7dc723fc97bccde863ce7307b27f22bd8e718cc293",
+      "query_url": "https://services9.arcgis.com/weJ1QsnbMYJlCHdG/arcgis/rest/services/Daily_Ports_Data/FeatureServer/0/query?f=json&where=portid+%3D+%27port1201%27+AND+date+%3E%3D+DATE+%272022-01-01%27+AND+date+%3C%3D+DATE+%272024-12-31%27&outFields=date%2Cportid%2Cportname%2Cportcalls_container%2Cportcalls&orderByFields=date+ASC%2CObjectId+ASC&resultOffset=1000&resultRecordCount=500&returnGeometry=false"
+    }
+  ],
+  "transformations": "Select five named fields and one port/date window; preserve all attribute values. Format canonical JSON; untouched response bytes also retained.",
+  "unit": "portcalls_container: container-ship calls per UTC day. portcalls: all tracked ship-type calls.",
+  "revision_note": "Later retrieval of historical data, not archived contemporaneous data vintages."
+}

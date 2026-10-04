@@ -26,6 +26,7 @@ from harborshield.optimization import optimize_container_portfolio
 from harborshield.joint_risk import run_joint_experiment
 from harborshield.public_data import activity_summary, load_port_activity
 from harborshield.case_ui import render_business_case, render_document_lab
+from harborshield.portwatch_ui import render_portwatch
 
 
 ROOT = Path(__file__).resolve().parent
@@ -234,8 +235,8 @@ if priorities_valid:
 
 st.divider()
 st.header("Advanced analysis")
-case_tab, document_tab, research_tab, stress_tab, portfolio_tab, public_data_tab, model_tab = st.tabs(
-    ["Real-event business case", "Trade-document lab", "Joint-risk research lab", "Scenario stress test", "Allocation baseline", "Public data", "Model card"]
+case_tab, document_tab, research_tab, stress_tab, portfolio_tab, public_data_tab, real_data_tab, model_tab = st.tabs(
+    ["Real-event business case", "Trade-document lab", "Joint-risk research lab", "Scenario stress test", "Allocation baseline", "Public data", "Real-data backtest", "Model card"]
 )
 
 with case_tab:
@@ -557,13 +558,17 @@ with public_data_tab:
         "(https://data.gov.sg/datasets/d_d48c5a038904f6da3c603cd854b6c191/view)."
     )
 
+with real_data_tab:
+    render_portwatch(ROOT)
+
 with model_tab:
     st.subheader("Model card and research basis")
     st.markdown(
         """
         **Purpose:** portfolio-level decision support and scenario exploration.  
         **Not intended for:** actuarial pricing, binding insurance quotations, or live vessel operations.  
-        **Real public input:** monthly Singapore vessel arrivals from MPA/data.gov.sg.  
+        **Real public input:** monthly MPA arrivals; separate IMF PortWatch daily container-call forecast backtest.
+
         **Simulated inputs:** route price, duration, reliability, exposure, and carbon values.  
         **Methods:** logistic risk scoring, Monte Carlo uncertainty propagation,
         weighted multi-criteria ranking, stress testing, joint batch CVaR,

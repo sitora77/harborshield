@@ -76,12 +76,25 @@ change, so re-check before future reuse.
 | Source | Status | Intended role |
 |---|---|---|
 | [MPA vessel arrivals via data.gov.sg](https://data.gov.sg/datasets/d_d48c5a038904f6da3c603cd854b6c191/view) | Integrated snapshot | Singapore port-activity context and reproducible public-data pipeline. |
+| [IMF PortWatch Daily_Ports_Data](https://portwatch.imf.org/datasets/83b1bbc7b3354c5fb1f40673bb8f852e/about) | Integrated v0.5: 1,096 daily records | Singapore container-call prediction, chronological selection and held-out 2024 errors; not waiting/claims labels. |
 | [UNCTAD Maritime Transport via World Bank Data360](https://data360.worldbank.org/en/dataset/UNCTAD_MT) | Documented, not yet integrated | Connectivity, fleet, trade, and maritime transport indicators. |
 | [UNCTAD Review of Maritime Transport 2025](https://unctad.org/publication/review-maritime-transport-2025) | Context source | Sector disruptions, port performance, decarbonisation, and policy context. |
 | [NGA World Port Index](https://msi.nga.mil/Publications/WPI) | Planned | Traceable global port coordinates and port characteristics. |
 | [Open-Meteo Marine Weather API](https://open-meteo.com/en/docs/marine-weather-api) | Planned | Wave and marine-weather scenario inputs with source acknowledgement. |
 
 ## Research-integrity rules
+
+### v0.5 primary data/method references
+
+- [Arslanalp, Koepke & Verschuur (2021), Tracking Trade from Space, IMF Working Paper 2021/225](https://www.imf.org/en/Publications/WP/Issues/2021/08/20/Tracking-Trade-from-Space-An-Application-to-Pacific-Island-Countries-464345): methodology reference named by the PortWatch dataset. Used to explain AIS-derived activity and limitations; our forecasting model is not a replication of this paper.
+- [World Bank port-call trends monitor](https://worldbank.github.io/alternative-data-for-crisis/notebooks/disruptions-business-trade/port-calls-trends-monitor.html): public methodology/code reference for paginated retrieval and activity monitoring. No code copied; our source is the current Daily_Ports_Data service, not its older trade endpoint.
+- [IMF copyright/data terms](https://www.imf.org/en/about/copyright-and-terms): source attribution and separate data rights. The project's MIT code licence does not relicense PortWatch observations. See `data/portwatch/DATA_TERMS.md`.
+
+Only the ridge activity model is fitted on the real port-call target. The separate
+cargo-claim, delay and insurance/finance coefficients remain teaching assumptions.
+Dataset vintage and daily-target evaluation are disclosed in `docs/REAL_DATA_REPORT.md`.
+
+### Continuing rules
 
 1. Simulated route inputs must remain labelled simulated.
 2. Public datasets must include publisher, URL, retrieval date, fields, and transformations.

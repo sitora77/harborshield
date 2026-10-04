@@ -5,6 +5,7 @@ operations with supply-chain management and digital trade finance.
 
 [English interactive case](https://sitorastudio.com/case-study-en.html) ·
 [Chinese case](https://sitorastudio.com/case-study.html) ·
+[Real-data forecast evidence](https://sitorastudio.com/real-data-en.html) ·
 [Source code](https://github.com/sitora77/harborshield)
 
 ## Problem
@@ -82,6 +83,28 @@ no-eligible decisions, date portability, same-order documents, signature trust
 boundaries and dashboard interactions. Both display languages use one template
 and one browser calculator; switching language preserves the selected inputs.
 
+## Separate real-data evidence
+
+The v0.5 module uses 1,096 daily, AIS-derived Singapore container-ship port-call
+observations from [IMF PortWatch](https://portwatch.imf.org/datasets/83b1bbc7b3354c5fb1f40673bb8f852e/about).
+It trains on 2022, selects one of five methods on 2023 MAE, then evaluates
+366 rolling one-day-ahead targets in 2024. Raw source responses, retrieval
+metadata and checksums are retained; missing dates and invalid counts block analysis.
+
+The selected previous-28-day average achieves 2024 MAE 3.29 calls/day, compared
+with 4.80 for yesterday's count, a 31.4% lower error on this fixed snapshot.
+It also outperforms the fixed ridge candidate. This is a measured activity
+forecast result, not classification accuracy, a congestion effect or financial
+savings. Earlier observed test days may enter lags; future targets do not.
+The snapshot was downloaded later and may contain historical revisions;
+contemporaneous real-time data availability is not validated.
+
+Connecting the activity forecast to a real replenishment/finance decision still
+requires matched waiting-time, delivery, demand, quotation and payment records.
+No automatic port-call-to-delay mapping is used. The real activity experiment
+does not validate the separate constructed cargo-insurance or working-capital models.
+[Full report and limitations](REAL_DATA_REPORT.md).
+
 ## Academic relevance and limits
 
 - SCM: replenishment, inventory exposure and disruption response under constraints.
@@ -95,4 +118,4 @@ company documents were available. Substantial AI assistance is disclosed; the
 owner should claim only the experiments and methods they can personally explain,
 reproduce and defend. No completed personal learning record is implied here.
 
-Version 0.4 · 4 October 2026.
+Version 0.5 · 4 October 2026.

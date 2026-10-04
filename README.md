@@ -5,6 +5,23 @@
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-1f6feb)](https://www.python.org/)
 [![Licence: MIT](https://img.shields.io/badge/Licence-MIT-2ea44f)](LICENSE)
 
+**v0.5 real-data evidence:** 1,096 daily Singapore container-ship port-call
+observations from IMF PortWatch (2022–2024), verified source snapshots and a
+chronological forecast comparison. Train on 2022, select on 2023, test on 366
+days in 2024. The selected previous-28-day mean has daily MAE **3.29 calls**,
+versus **4.80** for yesterday's count (31.4% lower error on this snapshot).
+It also beats the fixed ridge candidate; model complexity is not presumed superior.
+[English evidence](https://sitorastudio.com/real-data-en.html) ·
+[中文真实数据实验](https://sitorastudio.com/real-data.html) ·
+[Measured report](docs/REAL_DATA_REPORT.md) ·
+[小白复现指南](docs/REAL_DATA_GUIDE_ZH.md).
+
+These are AIS-derived **activity** observations, not cargo-delay/claims labels.
+The historical data were retrieved later and may be revised; this is not an
+as-of-2024-vintage or live-deployment backtest. No forecast-to-delay conversion
+or realised cost saving is claimed. Source data retain their
+[IMF terms](data/portwatch/DATA_TERMS.md), separate from MIT-licensed code.
+
 **v0.4:** a bilingual Singapore 2024 public-event case with constructed replenishment
 economics, working-capital ledger, explicit funding/deadline/contribution screening
 and same-order structured documents with DEMO Ed25519 signatures.
@@ -54,6 +71,8 @@ flowchart LR
     H --> K
     L --> K
     J --> K
+    S[IMF PortWatch daily calls] --> T[Chronological forecast backtest]
+    T --> K
     M[Public-event register] -. Context, not calibration .-> N[Constructed order case]
     N --> O[Replenishment + working-capital ledger]
     O --> K
@@ -74,6 +93,9 @@ scenario analysis instead of presenting a black-box recommendation.
 
 ## Current research prototype
 
+- Real PortWatch activity forecast test with five methods and frozen chronological selection.
+- Preserved raw API responses, source checksums, gap/duplicate/count validation and offline reproduction.
+- Daily forecast errors, monthly diagnostics and bilingual public real-data evidence pages.
 - Public Singapore 2024 event register, separately labelled constructed order/options.
 - Replenishment, stockout opportunity cost and exact event-based working-capital ledger.
 - Funding/deadline/contribution screening; no recommendation when no option is eligible.
@@ -137,6 +159,7 @@ python -m unittest discover -s tests -v
 python -m pip install -r requirements-research.txt
 python scripts/run_experiments.py
 python scripts/run_case_study.py
+python scripts/run_real_data.py
 # Optional browser/Python agreement checks require Node.js 20+:
 node scripts/test_case_calculator.cjs
 ```
@@ -157,7 +180,7 @@ Local model and dashboard tests pass. A [CI template](ci/tests.yml.example)
 is supplied, but GitHub Actions is **not yet enabled**: the current publishing
 credential does not grant workflow modification. See [activation notes](ci/README.md).
 
-The current verification run passes 68 Python tests, with separate JavaScript/Python
+The current verification run passes 92 Python tests, with separate JavaScript/Python
 agreement checks for all 27 sensitivity settings, four constraint examples and
 input boundaries. Strict YYYY-MM-DD document checks also pass on Python 3.12.
 Financial purchase/sales values and purchase plus logistics are limited to 1e15

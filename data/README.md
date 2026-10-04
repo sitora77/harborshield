@@ -1,5 +1,16 @@
 # Data provenance
 
+## `portwatch/`
+
+1,096 daily observations from [IMF PortWatch Daily_Ports_Data](https://portwatch.imf.org/datasets/83b1bbc7b3354c5fb1f40673bb8f852e/about),
+Singapore port1201 only, 2022-01-01 through 2024-12-31. AIS-derived container-ship
+port-call counts, not waiting times, cargo claims or TEU. Raw paginated API
+responses and snapshot SHA-256 checksums are retained; no missing dates or
+counts are invented. See [source-data terms](portwatch/DATA_TERMS.md),
+`portwatch/provenance.json` and the [real-data report](../docs/REAL_DATA_REPORT.md).
+The noncommercial research subset keeps source attribution; MIT applies to code,
+not third-party data. A later-retrieved historical snapshot may contain revisions.
+
 ## `sample_routes.csv`
 
 Illustrative route alternatives created for this portfolio prototype. Costs,
@@ -23,4 +34,3 @@ of queueing time or port congestion.
 
 Run `python scripts/update_mpa_data.py` to refresh the snapshot from the
 official API. Review upstream schema changes before committing an update.
-

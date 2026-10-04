@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.0 · 2026-10-04
+
+- Added a real IMF PortWatch Singapore daily container-call snapshot (1,096 days),
+  untouched paginated response bytes, source URLs, timestamp and SHA-256 provenance.
+- Added 2022 training / 2023 selection / 2024 rolling one-day-ahead testing for
+  four simple baselines and a fixed-penalty ridge autoregression.
+- Selected 28-day mean achieved 3.2906 test MAE versus 4.7951 for yesterday;
+  the ridge candidate did not outperform it. These are port-call errors, not savings.
+- Added a separate Streamlit real-data tab, bilingual public evidence, downloadable
+  daily predictions, monthly diagnostics and beginner reproduction exercises.
+- Added 24 tests for integrity, gaps, strict dates, look-ahead prevention, frozen
+  selection, replay, language consistency and dashboard data separation/failure.
+- Kept AIS indicator/data-vintage limits and third-party data terms explicit;
+  did not convert activity counts to delay, claims, insurance or financial outcomes.
+
 ## 0.4.0 · 2026-10-04
 
 - Added English/Chinese case presentation from one template, with shared browser
